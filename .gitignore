@@ -22,3 +22,21 @@ dist/
 # 도구/에디터
 .bkit/
 .claude/
+.test-e2e/
+build/
+dist/
+release/
+output/
+*.spec.bak
+smoke-*.json
+
+# 비공개 — 코드는 저장소에 올리지 않음 (배포는 Releases의 설치 파일로만)
+app/
+bin/
+tests/
+installer/
+build.ps1
+requirements.txt
+클로드 오피니언.md
+*.log
+*.pid
