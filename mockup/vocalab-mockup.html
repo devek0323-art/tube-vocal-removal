@@ -1,0 +1,849 @@
+<title>보컬랩 UI 목업</title>
+<style>
+  :root {
+    --desk: #171310;
+    --win: #2a2521;
+    --panel: #322c26;
+    --panel-head: #38322b;
+    --well: #1c1815;
+    --edge: #120f0c;
+    --line: #463f36;
+    --text: #e9e2d2;
+    --muted: #a89d89;
+    --dim: #786e5d;
+    --cream: #ddd3bb;
+    --cream-hi: #ece3cd;
+    --amber: #e2a83f;
+    --amber-hi: #f0c469;
+    --green: #97bf70;
+    --red: #c04a38;
+    --font: "Pretendard", "Segoe UI", "Malgun Gothic", sans-serif;
+    --serif: var(--font);
+    --mono: "Cascadia Code", Consolas, "D2Coding", monospace;
+  }
+
+  * { box-sizing: border-box; }
+
+  /* ── 레트로 스크롤바 (대기열·로그 공용) ── */
+  .queue::-webkit-scrollbar, .log::-webkit-scrollbar { width: 9px; }
+  .queue::-webkit-scrollbar-track, .log::-webkit-scrollbar-track {
+    background: #16120e;
+    border-left: 1px solid var(--edge);
+  }
+  .queue::-webkit-scrollbar-thumb, .log::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, #4c4335, #3a3328);
+    border: 1px solid #0e0b08;
+    border-radius: 4px;
+    box-shadow: inset 0 1px 0 rgba(255, 240, 200, 0.1);
+  }
+  .queue::-webkit-scrollbar-thumb:hover, .log::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, #5d5240, #463d2f);
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background:
+      radial-gradient(1200px 700px at 50% -10%, #2b241d 0%, transparent 60%),
+      linear-gradient(180deg, #1d1815 0%, #171310 55%, #241a10 100%);
+    color: var(--text);
+    font-family: var(--font);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 36px 16px 72px;
+  }
+
+  .note {
+    max-width: 560px;
+    width: 100%;
+    margin-bottom: 14px;
+    font-size: 12.5px;
+    color: var(--dim);
+    text-align: center;
+  }
+  .note strong { color: var(--amber); font-weight: 600; }
+
+  /* ── 앱 창 (빈티지 랙 섀시) ─────────────── */
+  .window {
+    width: 100%;
+    max-width: 560px;
+    background: linear-gradient(180deg, #2d2823, var(--win) 30%);
+    border: 1px solid #0b0906;
+    border-radius: 5px;
+    overflow: hidden;
+    box-shadow:
+      0 34px 80px rgba(0, 0, 0, 0.75),
+      0 2px 6px rgba(0, 0, 0, 0.6),
+      inset 0 1px 0 rgba(255, 240, 200, 0.06);
+  }
+
+  .titlebar {
+    display: flex;
+    align-items: stretch;
+    height: 36px;
+    border-bottom: 1px solid var(--edge);
+    background: linear-gradient(180deg, #262019, #211c16);
+    user-select: none;
+  }
+  .tb-left { display: flex; align-items: center; gap: 9px; padding: 0 13px; }
+  .logo {
+    width: 17px; height: 17px;
+    border-radius: 3px;
+    background: linear-gradient(180deg, var(--amber-hi), var(--amber));
+    color: #38230a;
+    display: grid; place-items: center;
+    font-size: 10px;
+    box-shadow: 0 0 6px rgba(226, 168, 63, 0.35);
+  }
+  .tb-title { font-size: 12.5px; font-family: var(--serif); letter-spacing: 0.06em; color: var(--cream); }
+  .tb-title .dim { color: var(--dim); font-family: var(--font); font-size: 11.5px; letter-spacing: 0; }
+  .titlebar .spacer { flex: 1; }
+
+  .cap-btn {
+    width: 44px;
+    background: transparent;
+    border: none;
+    color: var(--muted);
+    font-size: 12px;
+    font-family: var(--font);
+    cursor: pointer;
+    display: grid; place-items: center;
+  }
+  .cap-btn:hover { background: #322b23; color: var(--text); }
+  .cap-btn.close:hover { background: #a2321f; color: #fff; }
+  .cap-btn:focus, .cap-btn:focus-visible { outline: none; }
+
+  button:focus-visible, input:focus-visible, select:focus-visible, [tabindex]:focus-visible {
+    outline: 1px solid var(--amber);
+    outline-offset: 1px;
+  }
+
+  main { padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+
+  /* ── 패널 (페이스플레이트) ─────────────── */
+  .panel {
+    position: relative;
+    background: linear-gradient(180deg, #363028 0%, var(--panel) 12%);
+    border: 1px solid var(--edge);
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: inset 0 1px 0 rgba(255, 240, 200, 0.05);
+  }
+  /* 나사 디테일 */
+  .panel::before, .panel::after {
+    content: "";
+    position: absolute;
+    top: 8px;
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background:
+      linear-gradient(45deg, transparent 44%, rgba(20, 15, 10, 0.9) 44% 56%, transparent 56%),
+      radial-gradient(circle at 35% 30%, #8a7f6c, #4b4237 65%, #2a241d);
+    box-shadow: 0 1px 1px rgba(0, 0, 0, 0.6);
+    z-index: 1;
+  }
+  .panel::before { left: 9px; }
+  .panel::after { right: 9px; }
+
+  .panel-head {
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    padding: 7px 26px;
+    font-family: var(--serif);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    color: var(--cream);
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55);
+    border-bottom: 1px solid #211c16;
+    background: linear-gradient(180deg, var(--panel-head), #332d26);
+  }
+  .panel-head .aux { font-family: var(--font); font-weight: 400; letter-spacing: 0.02em; font-size: 11px; color: var(--dim); }
+  .panel-body { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+  .count-badge {
+    background: var(--well);
+    border: 1px solid var(--edge);
+    color: var(--amber);
+    font-family: var(--mono);
+    font-size: 10.5px;
+    letter-spacing: 0;
+    padding: 1px 7px;
+    border-radius: 2px;
+  }
+
+  /* ── 베이클라이트 버튼 / 입력 ──────────── */
+  .hw-btn {
+    background: linear-gradient(180deg, #40382d, #2b251d 70%, #241f18);
+    border: 1px solid #0e0b08;
+    border-radius: 4px;
+    box-shadow: inset 0 1px 0 rgba(255, 240, 200, 0.12), 0 1px 2px rgba(0, 0, 0, 0.5);
+    color: var(--cream);
+    font: 600 12.5px var(--font);
+    padding: 8px 16px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+  .hw-btn:hover:not(:disabled) { background: linear-gradient(180deg, #4a4134, #332c23); }
+  .hw-btn:active:not(:disabled) { background: #241f18; box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.55); }
+  .hw-btn:disabled { color: var(--dim); cursor: default; }
+
+  .hw-input {
+    background: var(--well);
+    border: 1px solid var(--edge);
+    border-radius: 3px;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.45);
+    color: var(--text);
+    font: 13px/1.4 var(--font);
+    padding: 8px 11px;
+  }
+  .hw-input::placeholder { color: var(--dim); }
+
+  .url-row { display: flex; gap: 8px; }
+  .url-row input { flex: 1; min-width: 0; }
+
+  /* ── 대기열 ─────────────────────────── */
+  .queue { display: flex; flex-direction: column; max-height: 180px; overflow-y: auto; border: 1px solid var(--edge); border-radius: 3px; box-shadow: inset 0 2px 4px rgba(0,0,0,.4); }
+  .queue-empty {
+    color: var(--dim);
+    font-size: 12.5px;
+    text-align: center;
+    padding: 16px 0;
+    background: var(--well);
+  }
+  .queue-item {
+    display: flex; align-items: center; gap: 10px;
+    background: #262119;
+    border-bottom: 1px solid var(--edge);
+    border-left: 3px solid #4c4335;
+    padding: 8px 11px;
+    font-size: 12.5px;
+  }
+  .queue-item:last-child { border-bottom: none; }
+  .queue-item.running { border-left-color: var(--amber); background: #2c261d; }
+  .queue-item.done-item { border-left-color: var(--green); }
+  .queue-item .src { flex-shrink: 0; font-family: var(--mono); font-size: 10px; color: var(--dim); letter-spacing: 0.05em; }
+  .queue-item .title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chip {
+    flex-shrink: 0;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    padding: 2px 8px;
+    border-radius: 2px;
+    border: 1px solid var(--edge);
+    background: var(--well);
+    color: var(--dim);
+  }
+  .chip.run { color: var(--amber-hi); border-color: #6d5424; text-shadow: 0 0 6px rgba(226, 168, 63, 0.5); }
+  .chip.done { color: var(--green); border-color: #465a2e; }
+  .remove-btn {
+    flex-shrink: 0;
+    background: none; border: none;
+    color: var(--dim);
+    font-size: 13px;
+    cursor: pointer;
+    padding: 2px 4px;
+    line-height: 1;
+  }
+  .remove-btn:hover { color: var(--red); }
+
+  /* ── 분리 방식 ──────────────────────── */
+  .mode-select {
+    width: 100%;
+    background: var(--well);
+    border: 1px solid var(--edge);
+    border-radius: 3px;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.45);
+    color: var(--text);
+    font: 13px var(--font);
+    padding: 9px 11px;
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23a89d89' stroke-width='1.4' fill='none'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 11px center;
+  }
+  .mode-hint { font-size: 12px; color: var(--muted); line-height: 1.5; }
+
+  /* ── 실행 버튼줄 ────────────────────── */
+  .action-row { display: flex; gap: 8px; }
+  .start-btn {
+    flex: 1;
+    padding: 12px;
+    border: 1px solid #857552;
+    border-radius: 4px;
+    background: linear-gradient(180deg, var(--cream-hi), var(--cream) 55%, #c7bb9e);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.55), 0 1px 3px rgba(0, 0, 0, 0.5);
+    color: #3b2d15;
+    font: 800 14px var(--font);
+    letter-spacing: 0.08em;
+    cursor: pointer;
+  }
+  .start-btn:hover:not(:disabled) { filter: brightness(1.04); }
+  .start-btn:active:not(:disabled) { filter: brightness(0.92); box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.3); }
+  .start-btn:disabled { filter: saturate(0.4) brightness(0.68); cursor: default; }
+
+  /* ── 진행 상황 (VU 미터) ───────────────── */
+  .progress-head {
+    display: flex; justify-content: space-between; align-items: baseline;
+    font-size: 12px; color: var(--muted);
+  }
+  .progress-head .now { color: var(--text); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; padding-right: 10px; }
+  .progress-head .counter { flex-shrink: 0; font-family: var(--mono); font-size: 11.5px; color: var(--amber); }
+
+  /* 백라이트 VU 창 */
+  .bar-track {
+    position: relative;
+    height: 26px;
+    background: linear-gradient(180deg, #16120e, #1e1913);
+    border: 1px solid #0b0906;
+    border-radius: 3px;
+    box-shadow: inset 0 2px 6px rgba(0, 0, 0, 0.65);
+    overflow: hidden;
+  }
+  .bar-fill {
+    height: 100%;
+    width: 0%;
+    background: linear-gradient(180deg, #f7dfa4 0%, var(--amber-hi) 40%, var(--amber) 100%);
+    box-shadow: 0 0 14px rgba(240, 196, 105, 0.55);
+    transition: width 0.25s ease;
+  }
+  /* 은은한 눈금 오버레이 */
+  .bar-track::after {
+    content: "";
+    position: absolute; inset: 0;
+    background: repeating-linear-gradient(90deg, transparent 0 26px, rgba(10, 8, 5, 0.4) 26px 27px);
+    pointer-events: none;
+  }
+  .bar-text {
+    position: absolute; inset: 0;
+    display: grid; place-items: center;
+    font: 700 11px var(--mono);
+    color: var(--text);
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
+    z-index: 1;
+    pointer-events: none;
+  }
+
+  .log {
+    background: var(--well);
+    border: 1px solid var(--edge);
+    border-radius: 3px;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.45);
+    font: 11.5px/1.7 var(--mono);
+    color: var(--muted);
+    padding: 9px 11px;
+    height: 96px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+  }
+  .log .ok { color: var(--green); }
+
+  /* ── 설정 모달 ──────────────────────── */
+  .overlay {
+    position: fixed; inset: 0;
+    background: rgba(8, 6, 4, 0.7);
+    display: none;
+    place-items: center;
+    padding: 16px;
+    z-index: 10;
+  }
+  .overlay.open { display: grid; }
+
+  .modal {
+    width: 100%; max-width: 430px;
+    background: linear-gradient(180deg, #2d2823, var(--win) 30%);
+    border: 1px solid #0b0906;
+    border-radius: 5px;
+    overflow: hidden;
+    box-shadow: 0 28px 70px rgba(0, 0, 0, 0.7);
+  }
+  .modal-head {
+    padding: 9px 14px;
+    text-align: center;
+    font-family: var(--serif);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.16em;
+    color: var(--cream);
+    text-shadow: 0 1px 0 rgba(0, 0, 0, 0.55);
+    background: linear-gradient(180deg, var(--panel-head), #332d26);
+    border-bottom: 1px solid var(--edge);
+  }
+  .modal-body { padding: 16px 14px; display: flex; flex-direction: column; gap: 16px; }
+
+  .setting-row { display: flex; flex-direction: column; gap: 7px; }
+  .setting-label { font-family: var(--serif); font-size: 10.5px; font-weight: 700; letter-spacing: 0.12em; color: var(--muted); }
+  .folder-row { display: flex; gap: 8px; align-items: center; }
+  .folder-row .path-box {
+    flex: 1;
+    background: var(--well);
+    border: 1px solid var(--edge);
+    border-radius: 3px;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.45);
+    padding: 8px 10px;
+    font: 11px var(--mono);
+    color: var(--text);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
+  .setting-desc { font-size: 11.5px; color: var(--dim); }
+
+  .radio-group { display: flex; gap: 6px; }
+  .radio-group label {
+    flex: 1;
+    text-align: center;
+    padding: 8px 0;
+    background: linear-gradient(180deg, #40382d, #2b251d);
+    border: 1px solid #0e0b08;
+    border-radius: 3px;
+    box-shadow: inset 0 1px 0 rgba(255, 240, 200, 0.1);
+    font-size: 12px;
+    color: var(--muted);
+    cursor: pointer;
+    position: relative;
+  }
+  .radio-group input { position: absolute; opacity: 0; }
+  .radio-group label:has(input:checked) {
+    background: linear-gradient(180deg, var(--amber-hi), var(--amber));
+    border-color: #7a5a1d;
+    color: #38230a;
+    font-weight: 700;
+    box-shadow: 0 0 10px rgba(226, 168, 63, 0.35);
+  }
+
+  .sub-option { display: flex; align-items: center; gap: 10px; }
+  .sub-option[hidden] { display: none; }
+  .sub-label { font-size: 11.5px; color: var(--muted); flex-shrink: 0; width: 74px; }
+  .sub-note { font-size: 11.5px; color: var(--dim); }
+  .mini-select {
+    flex: 1;
+    background: var(--well);
+    border: 1px solid var(--edge);
+    border-radius: 3px;
+    color: var(--text);
+    font: 12px var(--font);
+    padding: 7px 10px;
+    cursor: pointer;
+  }
+
+  .toggle-row { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+  .toggle-row .t-title { font-size: 13px; font-weight: 600; }
+  .toggle-row .desc { font-size: 11.5px; color: var(--dim); margin-top: 3px; }
+  /* 빈티지 토글 스위치 */
+  .switch { position: relative; width: 40px; height: 22px; flex-shrink: 0; }
+  .switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; cursor: pointer; }
+  .switch .track {
+    position: absolute; inset: 0;
+    background: var(--well);
+    border: 1px solid #0e0b08;
+    border-radius: 3px;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.55);
+    transition: background 0.15s;
+    pointer-events: none;
+  }
+  .switch .track::after {
+    content: "";
+    position: absolute; top: 2px; left: 2px;
+    width: 16px; height: 16px;
+    background: linear-gradient(180deg, #5d5344, #3f382d);
+    border-radius: 2px;
+    box-shadow: inset 0 1px 0 rgba(255, 240, 200, 0.2), 0 1px 2px rgba(0, 0, 0, 0.5);
+    transition: transform 0.15s, background 0.15s;
+  }
+  .switch input:checked + .track { background: #3d2c12; box-shadow: inset 0 2px 4px rgba(0,0,0,.55), 0 0 8px rgba(226,168,63,.25); }
+  .switch input:checked + .track::after { transform: translateX(18px); background: linear-gradient(180deg, var(--amber-hi), var(--amber)); }
+
+  .modal-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 0 14px 16px; }
+  .primary-sm {
+    background: linear-gradient(180deg, var(--cream-hi), var(--cream));
+    border: 1px solid #857552;
+    border-radius: 3px;
+    color: #3b2d15;
+    font: 700 12.5px var(--font);
+    padding: 8px 18px;
+    cursor: pointer;
+  }
+
+  /* ── 토스트 ─────────────────────────── */
+  .toast {
+    position: fixed;
+    bottom: 28px; left: 50%;
+    transform: translate(-50%, 80px);
+    background: #38322b;
+    border: 1px solid var(--edge);
+    color: var(--text);
+    font-size: 12.5px;
+    padding: 9px 16px;
+    border-radius: 3px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55);
+    transition: transform 0.25s ease;
+    z-index: 20;
+  }
+  .toast.show { transform: translate(-50%, 0); }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+</style>
+
+<p class="note">아래는 새 앱의 <strong>인터랙티브 목업</strong>입니다 — 링크·파일을 여러 개 담아 "분리 시작"을 눌러보세요. 실제 다운로드/분리는 하지 않습니다.</p>
+
+<div class="window">
+  <div class="titlebar">
+    <div class="tb-left">
+      <div class="logo">🎤</div>
+      <span class="tb-title">Tube Vocal Removal <span class="dim">v1.00</span></span>
+    </div>
+    <div class="spacer"></div>
+    <button class="cap-btn" id="minBtn" title="최소화" aria-label="최소화">─</button>
+    <button class="cap-btn" id="maxBtn" title="최대화" aria-label="최대화">▢</button>
+    <button class="cap-btn close" id="closeBtn" title="닫기" aria-label="닫기">✕</button>
+  </div>
+
+  <main>
+    <section class="panel">
+      <div class="panel-head">곡 추가</div>
+      <div class="panel-body">
+        <div class="url-row">
+          <input class="hw-input" id="urlInput" type="text" placeholder="유튜브 링크 붙여넣고 Enter · 오디오 파일은 끌어다 놓아도 됩니다" />
+          <button class="hw-btn" id="filePickBtn">파일 선택</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">대기열 <span class="count-badge" id="queueCount">0곡</span></div>
+      <div class="panel-body">
+        <div class="queue" id="queueList">
+          <div class="queue-empty">아직 담긴 곡이 없습니다 — 위에서 링크나 파일을 추가하세요.</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div class="panel-head">분리 방식</div>
+      <div class="panel-body">
+        <select class="mode-select" id="modeSelect">
+          <option data-hint="사람 목소리를 전부 제거한 반주를 만듭니다. 가장 깨끗한 결과. (BS-Roformer)">반주 추출 · 최고 품질</option>
+          <option data-hint="메인 보컬만 제거하고 뒤의 코러스는 남깁니다. 노래방 반주에 가장 가까운 결과. (Karaoke)">반주 추출 · 코러스 유지</option>
+          <option data-hint="반주를 지우고 보컬만 뽑습니다. 원곡 가수의 라인을 따라 연습할 때. (Voc FT)">보컬만 추출</option>
+          <option data-hint="보컬 · 드럼 · 베이스 · 나머지 악기를 각각 따로 저장합니다. (Demucs)">악기별로 나누기 (4트랙)</option>
+        </select>
+        <div class="mode-hint" id="modeHint">사람 목소리를 전부 제거한 반주를 만듭니다. 가장 깨끗한 결과. (BS-Roformer)</div>
+      </div>
+    </section>
+
+    <div class="action-row">
+      <button class="hw-btn" id="settingsBtn" title="설정" aria-label="설정" style="font-size:14px;">⚙</button>
+      <button class="start-btn" id="startBtn">분리 시작</button>
+      <button class="hw-btn" id="openFolderBtn" disabled>폴더 열기</button>
+    </div>
+
+    <section class="panel">
+      <div class="panel-head">진행 상황</div>
+      <div class="panel-body">
+        <div class="progress-head">
+          <span class="now" id="nowPlaying">대기 중</span>
+          <span class="counter" id="queueCounter">0 / 0</span>
+        </div>
+        <div class="bar-track"><div class="bar-fill" id="barFill"></div><span class="bar-text" id="barText"></span></div>
+        <div class="log" id="log">대기 중 — 곡을 추가한 뒤 분리 시작을 누르세요.</div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<!-- 설정 모달 -->
+<div class="overlay" id="overlay">
+  <div class="modal" role="dialog" aria-label="설정">
+    <div class="modal-head">설정</div>
+    <div class="modal-body">
+
+      <div class="setting-row">
+        <div class="setting-label">출력 폴더</div>
+        <div class="folder-row">
+          <div class="path-box" id="folderPath">D:\음악\보컬랩 출력</div>
+          <button class="hw-btn" id="changeFolderBtn" style="padding:7px 13px; font-size:12px;">변경</button>
+        </div>
+        <div class="setting-desc">모든 결과가 이 폴더 안에 곡별 하위 폴더로 저장됩니다.</div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-label">저장 형식</div>
+        <div class="radio-group">
+          <label><input type="radio" name="fmt" value="WAV" checked><span>WAV</span></label>
+          <label><input type="radio" name="fmt" value="FLAC"><span>FLAC</span></label>
+          <label><input type="radio" name="fmt" value="MP3"><span>MP3</span></label>
+        </div>
+        <div class="sub-option" id="wavOpt">
+          <span class="sub-label">WAV 정밀도</span>
+          <select class="mini-select">
+            <option>16비트 (표준 · CD 음질 — 권장)</option>
+            <option>24비트 (스튜디오급)</option>
+            <option>32비트 float (편집 작업용)</option>
+          </select>
+        </div>
+        <div class="sub-option" id="mp3Opt" hidden>
+          <span class="sub-label">MP3 음질</span>
+          <select class="mini-select">
+            <option>320k (최고 음질 — 권장)</option>
+            <option>256k</option>
+            <option>192k</option>
+            <option>128k (용량 절약)</option>
+          </select>
+        </div>
+        <div class="sub-option" id="flacNote" hidden>
+          <span class="sub-note">FLAC은 무손실 압축이라 추가 설정이 필요 없습니다.</span>
+        </div>
+      </div>
+
+      <div class="setting-row">
+        <div class="setting-label">저장 대상</div>
+        <div class="radio-group">
+          <label><input type="radio" name="stems" checked><span>반주 + 보컬 둘 다</span></label>
+          <label><input type="radio" name="stems"><span>선택한 것만</span></label>
+        </div>
+        <div class="setting-desc">둘 다 저장해도 처리 시간은 같습니다.</div>
+      </div>
+
+      <div class="toggle-row">
+        <div>
+          <div class="t-title">원본 오디오 보관</div>
+          <div class="desc">끄면 분리가 끝난 뒤 다운로드한 원본을 지웁니다. 직접 넣은 파일은 항상 그대로 둡니다.</div>
+        </div>
+        <div class="switch">
+          <input type="checkbox" id="keepSourceToggle">
+          <span class="track"></span>
+        </div>
+      </div>
+
+      <div class="toggle-row">
+        <div>
+          <div class="t-title">그래픽카드(GPU) 사용</div>
+          <div class="desc">NVIDIA 그래픽카드로 분리 속도를 크게 높입니다.</div>
+        </div>
+        <div class="switch">
+          <input type="checkbox" id="gpuToggle" checked>
+          <span class="track"></span>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-actions">
+      <button class="hw-btn" id="closeModalBtn" style="padding:8px 16px;">닫기</button>
+      <button class="primary-sm" id="saveModalBtn">저장</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+
+  // 토스트
+  let toastTimer;
+  function toast(msg) {
+    const t = $("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 2200);
+  }
+
+  // 분리 방식 힌트
+  $("modeSelect").addEventListener("change", (e) => {
+    $("modeHint").textContent = e.target.selectedOptions[0].dataset.hint;
+  });
+
+  // ── 대기열 ──────────────────────────
+  let queue = [];
+  let nextId = 1;
+  let running = false;
+
+  function renderQueue() {
+    const list = $("queueList");
+    $("queueCount").textContent = queue.length + "곡";
+    if (queue.length === 0) {
+      list.innerHTML = '<div class="queue-empty">아직 담긴 곡이 없습니다 — 위에서 링크나 파일을 추가하세요.</div>';
+      return;
+    }
+    list.innerHTML = "";
+    for (const item of queue) {
+      const row = document.createElement("div");
+      row.className = "queue-item" + (item.status === "run" ? " running" : "") + (item.status === "done" ? " done-item" : "");
+      const chipClass = item.status === "run" ? "chip run" : item.status === "done" ? "chip done" : "chip";
+      const chipText = item.status === "run" ? item.stage : item.status === "done" ? "완료" : "대기";
+      row.innerHTML =
+        '<span class="src">' + (item.type === "url" ? "YT" : "FILE") + "</span>" +
+        '<span class="title"></span>' +
+        '<span class="' + chipClass + '">' + chipText + "</span>" +
+        (running ? "" : '<button class="remove-btn" title="빼기" aria-label="빼기">✕</button>');
+      row.querySelector(".title").textContent = item.title;
+      const rm = row.querySelector(".remove-btn");
+      if (rm) rm.addEventListener("click", () => {
+        queue = queue.filter((q) => q.id !== item.id);
+        renderQueue();
+      });
+      list.appendChild(row);
+    }
+  }
+
+  function addItem(type, title) {
+    queue.push({ id: nextId++, type, title, status: "wait", stage: "" });
+    renderQueue();
+  }
+
+  // URL 추가 (여러 줄 붙여넣기 지원)
+  function addUrls() {
+    const input = $("urlInput");
+    const parts = input.value.split(/\s+/).filter((s) => s.trim().length > 0);
+    if (parts.length === 0) { toast("링크를 먼저 붙여넣으세요."); return; }
+    for (const p of parts) {
+      const short = p.replace(/^https?:\/\//, "").slice(0, 42);
+      addItem("url", short + " (제목은 다운로드할 때 확인)");
+    }
+    input.value = "";
+    toast(parts.length + "곡을 대기열에 담았습니다.");
+  }
+  $("urlInput").addEventListener("keydown", (e) => { if (e.key === "Enter") addUrls(); });
+
+  // 파일 추가 (목업 — 가짜 파일명)
+  const sampleFiles = ["Since You've Been Gone.mp3", "Alone.flac", "Desperado.wav"];
+  let fileIdx = 0;
+  const fakeTitles = ["Open Arms — Journey", "Still Loving You — Scorpions", "I Want It All — Queen"];
+  let titleIdx = 0;
+  function pickFile() {
+    addItem("file", sampleFiles[fileIdx % sampleFiles.length]);
+    fileIdx++;
+    toast("목업입니다 — 실제 앱에서는 파일 선택 창이 열립니다 (여러 개 선택 가능).");
+  }
+  $("filePickBtn").addEventListener("click", pickFile);
+
+  // 창 조작 버튼 (목업)
+  $("minBtn").addEventListener("click", () => toast("목업입니다 — 실제 앱에서는 창이 최소화됩니다."));
+  $("maxBtn").addEventListener("click", () => toast("목업입니다 — 실제 앱에서는 창이 최대화됩니다."));
+  $("closeBtn").addEventListener("click", () => toast("목업입니다 — 실제 앱에서는 창이 닫힙니다."));
+
+  // 설정 모달
+  const overlay = $("overlay");
+  $("settingsBtn").addEventListener("click", () => overlay.classList.add("open"));
+  $("closeModalBtn").addEventListener("click", () => overlay.classList.remove("open"));
+  $("saveModalBtn").addEventListener("click", () => {
+    overlay.classList.remove("open");
+    toast("설정이 저장되었습니다. 이제 매번 고를 필요가 없어요.");
+  });
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.classList.remove("open"); });
+  $("changeFolderBtn").addEventListener("click", () => toast("목업입니다 — 실제 앱에서는 폴더 선택 창이 열립니다."));
+  $("openFolderBtn").addEventListener("click", () => toast("목업입니다 — 실제 앱에서는 출력 폴더가 열립니다."));
+
+  // 저장 형식에 따라 세부 옵션 전환
+  document.querySelectorAll('input[name="fmt"]').forEach((r) =>
+    r.addEventListener("change", () => {
+      const v = document.querySelector('input[name="fmt"]:checked').value;
+      $("wavOpt").hidden = v !== "WAV";
+      $("mp3Opt").hidden = v !== "MP3";
+      $("flacNote").hidden = v !== "FLAC";
+    })
+  );
+
+  // ── 가짜 순차 처리 ───────────────────
+  const logEl = $("log");
+  function addLog(text, cls) {
+    const line = document.createElement("div");
+    if (cls) line.className = cls;
+    line.textContent = text;
+    logEl.appendChild(line);
+    logEl.scrollTop = logEl.scrollHeight;
+  }
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  async function runStage(item, label, from, to, ms, logs, idx, total) {
+    item.stage = label;
+    renderQueue();
+    for (const l of logs) addLog("[" + idx + "/" + total + "] " + l);
+    const bar = $("barFill");
+    const steps = 16;
+    for (let i = 1; i <= steps; i++) {
+      const pct = from + ((to - from) * i) / steps;
+      bar.style.width = pct + "%";
+      $("barText").textContent = label + " · " + Math.round(pct) + "%";
+      await wait(ms / steps);
+    }
+  }
+
+  $("startBtn").addEventListener("click", async () => {
+    if (running) return;
+    if (queue.length === 0) { toast("먼저 곡을 추가하세요."); return; }
+    running = true;
+    const btn = $("startBtn");
+    btn.disabled = true;
+    $("openFolderBtn").disabled = true;
+    logEl.textContent = "";
+
+    const items = queue.filter((q) => q.status !== "done");
+    const total = items.length;
+    let idx = 0;
+
+    for (const item of items) {
+      idx++;
+      item.status = "run";
+      $("nowPlaying").textContent = item.title;
+      $("queueCounter").textContent = idx + " / " + total;
+      btn.textContent = "분리 중... (" + idx + "/" + total + ")";
+      $("barFill").style.width = "0%";
+      $("barText").textContent = "";
+
+      if (item.type === "url") {
+        await runStage(item, "다운로드", 0, 30, 900, ["유튜브에서 오디오 받는 중... (yt-dlp)"], idx, total);
+        // 다운로드가 끝나면 링크가 실제 곡 제목으로 바뀜
+        if (item.title.includes("제목은 다운로드")) {
+          item.title = fakeTitles[titleIdx++ % fakeTitles.length];
+          addLog("[" + idx + "/" + total + "] 제목 확인: " + item.title);
+          $("nowPlaying").textContent = item.title;
+          renderQueue();
+        }
+      } else {
+        addLog("[" + idx + "/" + total + "] 로컬 파일 — 다운로드 건너뜀");
+      }
+      await runStage(item, "분리 중", 30, 90, 1800, ["GPU로 분리 중... (BS-Roformer)"], idx, total);
+      await runStage(item, "저장", 90, 100, 500, ["반주 + 보컬 저장 중... WAV"], idx, total);
+
+      item.status = "done";
+      item.stage = "";
+      renderQueue();
+      addLog("[" + idx + "/" + total + "] ✔ 완료 → D:\\음악\\보컬랩 출력\\", "ok");
+    }
+
+    addLog("✔ 대기열 " + total + "곡 모두 완료!", "ok");
+    $("nowPlaying").textContent = "모두 완료";
+    $("barText").textContent = "완료";
+    btn.disabled = false;
+    btn.textContent = "분리 시작";
+    $("openFolderBtn").disabled = false;
+    running = false;
+    renderQueue();
+  });
+
+  // ── 데모 상태 미리 채우기 (열자마자 채워진 화면을 보여주기 위한 시연) ──
+  addItem("url", "Since You've Been Gone — Graham Bonnet Band");
+  queue[0].status = "done";
+  addItem("url", "Alone — Heart");
+  queue[1].status = "run";
+  queue[1].stage = "분리 중";
+  addItem("url", "youtu.be/dQw4w9WgXcQ (제목은 다운로드할 때 확인)");
+  addItem("file", "Desperado.wav");
+  addItem("url", "youtu.be/1w7OgIMMRc4 (제목은 다운로드할 때 확인)");
+  addItem("file", "Faithfully.mp3");
+  addItem("url", "youtu.be/hLQl3WQQoQ0 (제목은 다운로드할 때 확인)");
+  renderQueue();
+  $("nowPlaying").textContent = "Alone — Heart";
+  $("queueCounter").textContent = "2 / 7";
+  $("barFill").style.width = "62%";
+  $("barText").textContent = "분리 중 · 62%";
+  logEl.textContent = "";
+  addLog("[1/7] ✔ 완료 → D:\\음악\\보컬랩 출력\\Since You've Been Gone\\", "ok");
+  addLog("[2/7] 유튜브에서 오디오 받는 중... (yt-dlp)");
+  addLog("[2/7] 제목 확인: Alone — Heart");
+  addLog("[2/7] GPU로 분리 중... (BS-Roformer)");
+</script>
