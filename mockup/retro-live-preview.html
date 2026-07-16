@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Tube Vocal Removal · Retro Live Preview</title>
+<style>
+  :root {
+    --desk:#0d0b09; --case:#211c16; --panel:#302a22; --panel2:#27221c;
+    --well:#12100d; --edge:#090806; --line:#514737; --ivory:#eee5cc;
+    --muted:#a99d84; --dim:#756a56; --gold:#d8a63f; --gold2:#f1cf72;
+    --red:#d35d42; --green:#86b85f; --ink:#34230c;
+    --font:"Pretendard","Noto Sans KR","Segoe UI","Malgun Gothic",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;min-height:100%;background:var(--desk);color:var(--ivory);font-family:var(--font)}
+  body{display:grid;place-items:center;padding:26px;background:
+    radial-gradient(900px 600px at 50% 0,#30251a 0,transparent 62%),
+    repeating-linear-gradient(90deg,rgba(255,255,255,.008) 0 1px,transparent 1px 4px),#0d0b09}
+  button,input,select{font:inherit}
+  button{cursor:pointer}
+  .machine{width:min(760px,96vw);border:1px solid #050403;border-radius:9px;background:
+    linear-gradient(115deg,rgba(255,255,255,.035),transparent 18%),
+    linear-gradient(#2b251e,#1c1813);box-shadow:0 32px 80px #000,0 3px 0 #080604,inset 0 1px #5a4d3b;overflow:hidden}
+  .topbar{height:52px;display:flex;align-items:center;padding:0 17px;border-bottom:1px solid #080705;background:linear-gradient(#2b251e,#1c1813)}
+  .brand{margin-left:11px;font-family:var(--font);font-weight:700;letter-spacing:.03em;font-size:17px;color:#f3dfad}
+  .brand small{font:500 11px var(--font);color:#8f8067;margin-left:7px;letter-spacing:.06em}
+  .demo{margin-left:auto;color:#d4a84d;border:1px solid #624b22;background:#17120b;padding:4px 8px;border-radius:2px;font:700 10px var(--font);letter-spacing:.12em}
+  .screw{width:10px;height:10px;border-radius:50%;background:radial-gradient(circle at 35% 30%,#80735c,#211c16 60%,#090806);box-shadow:0 1px 1px #000;position:relative;flex:0 0 auto}
+  .screw:after{content:"";position:absolute;left:2px;right:2px;top:4px;height:1px;background:#100e0b;transform:rotate(36deg)}
+  .rack{padding:15px;display:grid;gap:12px}
+  .hero{display:block}
+  .panel{position:relative;border:1px solid #0b0907;border-radius:5px;background:
+    repeating-linear-gradient(0deg,rgba(255,255,255,.009) 0 1px,transparent 1px 3px),
+    linear-gradient(#373027,#2d271f);box-shadow:inset 0 1px #5e5241,0 2px 3px #0a0806;overflow:hidden}
+  .panel-head{height:35px;display:flex;align-items:center;justify-content:center;gap:9px;border-bottom:1px solid #17130f;background:linear-gradient(#3b342a,#302a22);font-size:12px;font-weight:700;letter-spacing:.14em;color:#ead9ad;text-shadow:0 1px #000}
+  .panel-head .screw:first-child{position:absolute;left:10px}.panel-head .screw:last-child{position:absolute;right:10px}
+  .panel-body{padding:13px}
+  .source-row{display:flex;gap:9px}
+  .input{min-width:0;flex:1;height:43px;border:1px solid #080705;border-radius:4px;background:linear-gradient(#110f0d,#181511);box-shadow:inset 0 2px 5px #000;color:#eadfca;padding:0 14px;outline:none}
+  .input::placeholder{color:#786d58}.input:focus{border-color:#b98525;box-shadow:inset 0 2px 5px #000,0 0 0 1px #e2b85655}
+  .btn{border:1px solid #0b0907;border-radius:4px;background:linear-gradient(#40382c,#2c261e);box-shadow:inset 0 1px #625540,0 2px #100d0a;color:#e6dac0;font-weight:700;padding:0 15px;min-height:40px;text-shadow:0 1px #000}
+  .btn:hover{filter:brightness(1.12)}.btn:active{transform:translateY(1px);box-shadow:inset 0 2px 4px #090705}
+  .meters{display:grid;grid-template-columns:1fr 1fr;gap:9px;height:100%}
+  .meter{position:relative;min-height:105px;border:1px solid #0b0907;border-radius:4px;overflow:hidden;background:#d8c58f;box-shadow:inset 0 0 22px #5c431c99}
+  .meter-face{position:absolute;inset:0;background:radial-gradient(ellipse at 50% 115%,transparent 47%,#513d1e30 48% 49%,transparent 50%),linear-gradient(#e8d8a8,#c7b47e)}
+  .ticks{position:absolute;left:13%;right:13%;top:15px;display:flex;justify-content:space-between;color:#514220;font:500 8px var(--font)}
+  .meter-label{position:absolute;bottom:12px;width:100%;text-align:center;color:#5a461f;font:700 9px var(--font);letter-spacing:.14em}
+  .needle{position:absolute;width:2px;height:65px;bottom:-8px;left:50%;transform-origin:50% 100%;transform:rotate(-34deg);background:#9f2d1d;box-shadow:0 0 1px #fff;transition:transform .12s ease}
+  .program-layout{display:grid;grid-template-columns:126px 1fr;gap:9px;align-items:center}
+  .program-copy{min-width:0;height:158px}
+  .selector-module{position:relative;height:158px;display:grid;place-items:center;padding:8px 7px 6px;border:1px solid #17120d;border-radius:4px;background:#211d17;box-shadow:inset 0 1px 3px #0a0806}
+  .selector-module:before{content:"";position:absolute;left:50%;top:50%;width:88px;height:88px;border:1px solid #6f6554;border-radius:50%;transform:translate(-50%,-50%);background:#17140f;box-shadow:inset 0 0 0 3px #29241c}
+  .selector-dial{position:relative;z-index:2;width:64px;height:64px;border:1px solid #090705;border-radius:50%;background:linear-gradient(145deg,#4c473e,#1c1915 68%);box-shadow:0 3px 5px #000,inset 0 1px #7d7568;transform:rotate(-125deg);transition:transform .16s cubic-bezier(.2,.8,.2,1)}
+  .selector-dial:focus-visible{outline:1px solid var(--gold2);outline-offset:4px}
+  .selector-dial:before{content:"";position:absolute;z-index:3;top:5px;left:30px;width:3px;height:21px;border-radius:2px;background:#eed486}
+  .selector-dial:after{display:none}
+  .detent{--a:0deg;--ia:0deg;position:absolute;z-index:3;left:50%;top:50%;width:18px;text-align:center;color:#8f836c;font:700 10px var(--font);transform:translate(-50%,-50%) rotate(var(--a)) translateY(-56px) rotate(var(--ia))}.detent.on{color:#f0c45f;text-shadow:0 0 5px #e3a936}
+  .d1{--a:-125deg;--ia:125deg}.d2{--a:-75deg;--ia:75deg}.d3{--a:-25deg;--ia:25deg}.d4{--a:25deg;--ia:-25deg}.d5{--a:75deg;--ia:-75deg}.d6{--a:125deg;--ia:-125deg}
+  .strip{display:grid;grid-template-columns:1.2fr .8fr;gap:12px}
+  .select{width:100%;height:43px;color:#efe3ca;background:#17130f;border:1px solid #0a0806;border-radius:4px;padding:0 12px;outline:none}
+  .legend{margin-top:8px;color:#92866f;font-size:11px;line-height:1.5}
+  .program-readout{position:relative;height:158px;border:1px solid #050804;border-radius:4px;background:
+    repeating-linear-gradient(0deg,rgba(137,218,99,.025) 0 1px,transparent 1px 4px),linear-gradient(#071006,#0c170a);padding:15px 14px 11px;box-shadow:inset 0 3px 8px #000,0 1px #514634;display:grid;grid-template-columns:43px 1fr;gap:10px;align-items:start;overflow:hidden}
+  .program-readout:after{content:"";pointer-events:none;position:absolute;inset:0;background:radial-gradient(ellipse at 50% 45%,transparent 48%,#02050166 100%)}
+  .program-no{position:relative;z-index:1;color:#b9ed8d;font:800 22px/22px var(--font);text-shadow:0 0 8px #78c94d;letter-spacing:-.04em}.program-content{position:relative;z-index:1;min-width:0;display:grid;grid-template-rows:22px 18px 68px;align-content:start}.program-name{min-width:0;font:800 17px/22px var(--font);color:#b9ed8d;text-shadow:0 0 8px #78c94d;white-space:nowrap;overflow:hidden;text-overflow:clip}.program-spec{min-width:0;color:#80bb66;font:700 11.5px/18px var(--font);letter-spacing:.03em;white-space:nowrap;overflow:hidden;text-overflow:clip}.program-description{margin-top:7px;padding-top:7px;padding-bottom:3px;border-top:1px solid #294322;color:#9bd184;font:500 11px/17px var(--font);height:68px;overflow:hidden;display:block;word-break:keep-all}
+  .engine-display{height:43px;margin:10px 10px 3px;padding:0 11px;border:1px solid #090705;border-radius:3px;background:repeating-linear-gradient(0deg,rgba(137,218,99,.022) 0 1px,transparent 1px 4px),linear-gradient(#071006,#0c170a);box-shadow:inset 0 2px 5px #000,0 1px #514634;color:#a9dc79;font:700 11.5px/1.35 var(--font);letter-spacing:.03em;text-shadow:0 0 7px #75b84f88;display:flex;align-items:center;justify-content:space-between;gap:8px;white-space:nowrap;overflow:hidden}
+  .engine-display .device{overflow:hidden;text-overflow:clip}.engine-display .output{color:#e4c464}
+  .knob-row{display:flex;align-items:center;justify-content:space-around;padding:4px 5px 9px}
+  .control{text-align:center;color:#b9ad94;font:700 10px var(--font);letter-spacing:.06em;min-width:64px}
+  .knob-bezel{width:56px;height:56px;margin:5px auto 2px;border:1px solid #6f6554;border-radius:50%;display:grid;place-items:center;background:#17140f;box-shadow:inset 0 0 0 3px #29241c}
+  .knob{display:block;width:41px;height:41px;margin:0;border:1px solid #090705;padding:0;border-radius:50%;background:linear-gradient(145deg,#4c473e,#1c1915 68%);box-shadow:0 3px 5px #000,inset 0 1px #7d7568;position:relative;transition:transform .15s cubic-bezier(.2,.8,.2,1);cursor:pointer}
+  .knob:before{content:"";position:absolute;z-index:2;top:3px;left:18px;width:3px;height:14px;border-radius:2px;background:#eed486}
+  .knob:after{display:none}
+  .knob:focus-visible{outline:1px solid var(--gold2);outline-offset:3px}.knob:hover{filter:brightness(1.13)}
+  .control-value{color:#f0cd69;font:700 10.5px var(--font);min-height:13px;text-shadow:0 0 5px #d69d2d55}
+  .queue{max-height:145px;overflow:auto;background:#15120f;border:1px solid #0b0907;border-radius:3px}
+  .reset-control{position:absolute;right:10px;display:flex;align-items:center;gap:7px;color:#7f6f5c;font-size:8px;letter-spacing:.08em}
+  .reset-button{width:19px;height:19px;padding:0;border-radius:50%;border:1px solid #160704;background:radial-gradient(circle at 36% 30%,#63261b,#2b0d08 65%,#0c0503 70%);box-shadow:inset 0 2px 3px #000,0 1px #675342;cursor:pointer;transition:filter .15s,box-shadow .15s}
+  .reset-button:before{content:"";display:block;width:9px;height:9px;margin:auto;border-radius:50%;background:#4b150f;box-shadow:inset 0 1px 2px #140503}
+  .reset-button.armed:before{background:#ef5f42;box-shadow:inset 0 1px #ffb19d,0 0 8px #ef4c30,0 0 15px #b52d1d}
+  .reset-button:hover{filter:brightness(1.2)}.reset-button:active{transform:translateY(1px);box-shadow:inset 0 3px 4px #000}.reset-button:disabled{filter:saturate(.25);cursor:not-allowed}
+  .queue::-webkit-scrollbar,.log::-webkit-scrollbar{width:8px}.queue::-webkit-scrollbar-thumb,.log::-webkit-scrollbar-thumb{background:#504632;border-radius:4px}.queue::-webkit-scrollbar-track,.log::-webkit-scrollbar-track{background:#100d0a}
+  .qrow{height:44px;display:grid;grid-template-columns:42px 1fr 66px 24px;align-items:center;border-bottom:1px solid #2d271e;padding:0 10px;gap:8px;font-size:12px}
+  .qrow:last-child{border-bottom:0}.qrow.active{border-left:3px solid var(--gold);padding-left:7px;background:#211c14}.qrow.done{color:#a9c985}
+  .src{font:600 10px var(--font);color:#81765f}.song{white-space:nowrap;overflow:hidden;text-overflow:clip}.state{justify-self:end;border:1px solid #443717;background:#17130d;color:#c9b580;padding:4px 7px;border-radius:2px;font-size:10px}.done .state{border-color:#46602d;color:#9bd06c}.active .state{border-color:#8c641a;color:#f0c45f}
+  .remove{border:0;background:transparent;color:#7e725d;font-size:17px;padding:0}.remove:hover{color:#d2674b}
+  .actions{display:grid;grid-template-columns:54px 1fr 54px;gap:10px}
+  .tool-btn{padding:0;display:grid;place-items:center;background:linear-gradient(#40382d,#29231c);border-color:#0a0806;box-shadow:inset 0 1px #6f624e,0 2px #080604}.tool-btn svg{width:22px;height:22px;fill:none;stroke:#dfbd6b;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 1px #100c07)}.tool-btn:hover svg{stroke:#ffe39a}
+  .start{border-color:#5d2418;background:linear-gradient(#d16e4e,#a94331);color:#fff0dd;font-size:15px;letter-spacing:.08em;box-shadow:inset 0 1px #f4aa8e,0 2px #4b1710,0 0 15px #bd4e3025}
+  .start.running{background:linear-gradient(#d16e4e,#9e3a2b)}.record-dot{display:inline-block;width:9px;height:9px;border-radius:50%;background:#ffb09a;margin-right:8px;box-shadow:0 0 8px #fff;vertical-align:1px}
+  .progress-info{display:flex;gap:12px;align-items:center;margin-bottom:9px;font-size:12px}.progress-title{font-weight:700;overflow:hidden;text-overflow:clip;white-space:nowrap}.counter{margin-left:auto;color:#e6b74f;font:700 12px var(--font);flex:0 0 auto}
+  .progress-console{display:grid;grid-template-columns:1fr 72px;gap:9px;align-items:stretch;margin-bottom:8px}.stage-bank{display:grid;grid-template-columns:repeat(4,1fr);border:1px solid #090704;border-radius:3px;background:#17130f;box-shadow:inset 0 2px 5px #000;overflow:hidden}.stage-lamp{display:grid;grid-template-columns:7px auto;justify-content:center;align-items:center;gap:6px;min-width:0;padding:8px 4px;border-right:1px solid #2b241a;color:#625b4c;font:700 8px var(--font);letter-spacing:.06em}.stage-lamp:last-child{border-right:0}.stage-lamp::before{content:"";width:6px;height:6px;border-radius:50%;background:#29251d;box-shadow:inset 0 1px 2px #000}.stage-lamp.done{color:#8fae70}.stage-lamp.done::before{background:#78a650;box-shadow:0 0 7px #75b34d}.stage-lamp.active{color:#e5bd64}.stage-lamp.active::before{background:#e0a83d;box-shadow:0 0 8px #e4a733}.progress-readout{display:flex;align-items:center;justify-content:center;border:1px solid #080805;border-radius:3px;background:linear-gradient(#101813,#17251c);box-shadow:inset 0 2px 6px #000;color:#a9d477;font:700 15px var(--mono,Consolas,monospace);letter-spacing:.04em;text-shadow:0 0 7px #70a84b}.complete-lamp{width:7px;height:7px;margin-right:7px;border-radius:50%;background:#29251d;box-shadow:inset 0 1px 2px #000}.progress-readout.complete .complete-lamp{background:#7fc356;box-shadow:0 0 8px #79c34e}
+  .track{height:22px;position:relative;overflow:hidden;border:1px solid #080705;border-radius:4px;background:repeating-linear-gradient(90deg,#17130f 0 52px,#0e0c09 53px 54px);box-shadow:inset 0 2px 5px #000}
+  .fill{position:absolute;inset:0 auto 0 0;width:0;background:repeating-linear-gradient(90deg,transparent 0 52px,#7e5918 53px 54px),linear-gradient(#f1ce6d,#cc9832);box-shadow:inset 0 1px #fff1ab;transition:width .18s linear}
+  .log{height:84px;margin-top:10px;overflow:auto;border:1px solid #0b0907;border-radius:3px;background:#15120f;padding:10px 12px;color:#b8aa8d;font:500 10.5px/1.65 var(--font)}.log .ok{color:#92c66b}.log .hot{color:#e7b954}
+  .statusline{display:flex;align-items:center;gap:8px;margin-top:10px;color:#756b58;font:600 9px var(--font);letter-spacing:.07em}.pilot{width:7px;height:7px;border-radius:50%;background:#77b34d;box-shadow:0 0 7px #7dcc4d}
+  .drop-active{outline:2px solid #d9aa45;outline-offset:-6px}
+  .overlay{position:fixed;inset:0;z-index:30;display:none;align-items:center;justify-content:center;padding:18px;background:#050403c7;backdrop-filter:blur(3px)}.overlay.open{display:flex}
+  .settings-modal{width:min(540px,94vw);max-height:90vh;overflow:auto;border:1px solid #080604;border-radius:7px;background:linear-gradient(#312a22,#211c16);box-shadow:0 30px 80px #000,inset 0 1px #685a44}
+  .modal-head{height:47px;display:flex;align-items:center;padding:0 15px;border-bottom:1px solid #0d0a07;background:linear-gradient(#3a3228,#2b251d);color:#ead8a8;font-weight:700;letter-spacing:.1em}.modal-head small{margin-left:9px;color:#80745e;font-size:9px}.modal-head .modal-close{margin-left:auto;width:29px;height:29px;border:1px solid #16110c;border-radius:50%;background:#211b15;color:#bda779;font-size:17px}.modal-head .modal-close:hover{color:#ffd983;border-color:#725520}
+  .modal-body{padding:13px;display:grid;gap:10px}.setting-card{border:1px solid #100d09;border-radius:4px;background:linear-gradient(#342e26,#2a251e);box-shadow:inset 0 1px #514738;padding:12px}.setting-title{color:#e7d9b9;font-size:12px;font-weight:700;margin-bottom:7px}.setting-desc{color:#857a66;font-size:10.5px;line-height:1.45;margin-top:6px}
+  .folder-setting{display:flex;gap:8px}.path-display{min-width:0;flex:1;border:1px solid #080604;border-radius:3px;background:#12100d;color:#b5d393;padding:9px 10px;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:clip;box-shadow:inset 0 2px 4px #000}
+  .mini-btn{border:1px solid #0a0806;border-radius:3px;background:linear-gradient(#4a4032,#30291f);color:#decda7;font-size:10.5px;font-weight:700;padding:7px 11px;box-shadow:inset 0 1px #74644b}.mini-btn.gold{border-color:#6e5626;background:linear-gradient(#e3c777,#b68d39);color:#32230d;text-shadow:0 1px #f7e6ad}.mini-btn:hover{filter:brightness(1.1)}
+  .setting-toggle{display:flex;align-items:center;gap:12px}.setting-toggle .copy{flex:1}.switch{position:relative;width:48px;height:25px;border:1px solid #0a0806;border-radius:3px;background:#17130f;box-shadow:inset 0 2px 4px #000;cursor:pointer}.switch input{position:absolute;opacity:0}.switch span{position:absolute;top:3px;left:3px;width:18px;height:17px;border-radius:2px;background:linear-gradient(#615746,#383127);box-shadow:inset 0 1px #92836a,0 1px 2px #000;transition:.15s}.switch input:checked+span{transform:translateX(22px);background:linear-gradient(#f0d47d,#bd8f32);box-shadow:inset 0 1px #fff0b2,0 0 8px #d99d36}
+  .model-setting{display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px}.model-screen{border:1px solid #080604;border-radius:3px;background:#0e150d;padding:8px 10px;color:#a8d77d;font-size:10.5px;box-shadow:inset 0 2px 4px #000}.model-screen small{display:block;color:#65785a;margin-top:3px}
+  .modal-actions{display:flex;justify-content:flex-end;gap:8px;padding:0 13px 14px}
+  @media(max-height:900px){body{padding:12px}.rack{padding:11px;gap:9px}.topbar{height:44px}.panel-body{padding:10px}.queue{max-height:112px}.log{height:72px}.meter{min-height:92px}.machine{width:min(720px,96vw)}}
+  @media(max-width:650px){body{padding:8px}.strip{grid-template-columns:1fr}.program-layout{grid-template-columns:130px 1fr}.machine{width:100%}.rack{padding:9px}.qrow{grid-template-columns:35px 1fr 58px 20px}.legend{display:none}}
+</style>
+</head>
+<body>
+<div class="machine" id="machine">
+  <header class="topbar"><div class="brand" style="margin-left:0">Tube Vocal Removal</div><div class="demo">STUDIO SEPARATOR · v1.01</div></header>
+  <main class="rack">
+    <div class="hero">
+      <section class="panel">
+        <div class="panel-head"><i class="screw"></i>곡 추가<i class="screw"></i></div>
+        <div class="panel-body">
+          <div class="source-row"><input class="input" id="url" placeholder="유튜브 링크 붙여넣은 후 엔터 또는 파일 드래그 후 드롭"><button class="btn" id="fileBtn">파일 선택</button></div>
+          <div class="statusline"><span class="pilot"></span> INPUT READY · URL / WAV / FLAC / MP3</div>
+        </div>
+      </section>
+    </div>
+    <div class="strip">
+      <section class="panel"><div class="panel-head"><i class="screw"></i>PROGRAM SELECTOR<i class="screw"></i></div><div class="panel-body program-layout"><div class="selector-module" id="selectorModule"><span class="detent d1">1</span><span class="detent d2 on">2</span><span class="detent d3">3</span><span class="detent d4">4</span><span class="detent d5">5</span><span class="detent d6">6</span><button class="selector-dial" id="selectorDial" aria-label="프로그램 P1부터 P6 선택" title="클릭하거나 마우스 휠로 돌리세요"></button></div><div class="program-copy"><div class="program-readout"><span class="program-no" id="programNo">P2</span><div class="program-content"><div class="program-name" id="modeName">반주 + 코러스</div><div class="program-spec" id="modeSpec">추천 · 균형 처리</div><div class="program-description" id="hint">메인 보컬을 자연스럽게 줄이고 코러스와 백킹 보컬은 반주에 남깁니다.</div></div></div></div></div></section>
+      <section class="panel"><div class="panel-head"><i class="screw"></i>ENGINE CONTROL<i class="screw"></i></div><div class="engine-display"><span class="device" id="deviceDisplay">DEVICE · CPU</span><span class="output" id="outputDisplay">WAV · 24-BIT</span></div><div class="knob-row"><div class="control">GPU<div class="knob-bezel"><button class="knob" id="gpuKnob" aria-label="GPU 켜기 끄기"></button></div><div class="control-value" id="gpuValue">OFF</div></div><div class="control">FORMAT<div class="knob-bezel"><button class="knob" id="formatKnob" aria-label="출력 형식 선택"></button></div><div class="control-value" id="formatValue">WAV</div></div><div class="control">QUALITY<div class="knob-bezel"><button class="knob" id="qualityKnob" aria-label="음질 선택"></button></div><div class="control-value" id="qualityValue">24-BIT</div></div></div></section>
+    </div>
+    <section class="panel"><div class="panel-head"><i class="screw"></i>대기열 <span id="count" style="color:#d5a73e">3곡</span><span class="reset-control">RESET<button class="reset-button armed" id="resetBtn" aria-label="대기열 초기화" title="대기열 초기화"></button></span></div><div class="panel-body"><div class="queue" id="queue"></div></div></section>
+    <div class="actions"><button class="btn tool-btn" id="settingsBtn" title="설정" aria-label="설정"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/><circle cx="9" cy="7" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="8" cy="17" r="2"/></svg></button><button class="btn start" id="start"><span class="record-dot"></span>분리 시작</button><button class="btn tool-btn" id="folderBtn" title="출력 폴더" aria-label="출력 폴더"><svg viewBox="0 0 24 24"><path d="M3.5 7.5h6l2-2h3l2 2h4v10.3a1.7 1.7 0 0 1-1.7 1.7H5.2a1.7 1.7 0 0 1-1.7-1.7z"/><path d="M3.5 10h17"/></svg></button></div>
+    <section class="panel"><div class="panel-head"><i class="screw"></i>진행 상황<i class="screw"></i></div><div class="panel-body"><div class="progress-info"><span class="progress-title" id="now">대기 중</span><span class="counter" id="counter">0 / 3</span></div><div class="progress-console"><div class="stage-bank"><span class="stage-lamp" data-stage="input">INPUT</span><span class="stage-lamp" data-stage="model">MODEL</span><span class="stage-lamp" data-stage="separate">SEPARATE</span><span class="stage-lamp" data-stage="output">OUTPUT</span></div><div class="progress-readout" id="progressReadout"><i class="complete-lamp"></i><span id="pct">000%</span></div></div><div class="track"><div class="fill" id="fill"></div></div><div class="log" id="log"><div>준비 완료 — 링크나 파일을 추가하고 분리 시작을 누르세요.</div><div>CPU 모드 · 모델은 분리 시작 시 메모리에 불러옵니다.</div></div></div></section>
+  </main>
+</div>
+<div class="overlay" id="settingsOverlay">
+  <div class="settings-modal" role="dialog" aria-label="설정 샘플">
+    <div class="modal-head">SETTINGS <small>HARDWARE CONFIGURATION</small><button class="modal-close" id="settingsClose" aria-label="닫기">×</button></div>
+    <div class="modal-body">
+      <div class="setting-card"><div class="setting-title">출력 폴더</div><div class="folder-setting"><div class="path-display">C:\Users\USER\Music\Tube Vocal Removal</div><button class="mini-btn">변경</button></div><div class="setting-desc">분리된 결과는 곡별 하위 폴더에 자동 저장됩니다.</div></div>
+      <div class="setting-card setting-toggle"><div class="copy"><div class="setting-title">원본 오디오 보관</div><div class="setting-desc">유튜브에서 받은 원본 오디오를 결과 폴더에 함께 보관합니다.</div></div><label class="switch"><input type="checkbox"><span></span></label></div>
+      <div class="setting-card"><div class="setting-title">AI 모델 미리 받기</div><div class="model-setting"><div class="model-screen">반주 + 코러스 · 추천<small>약 871MB · 미설치</small></div><button class="mini-btn gold">선택 모델</button><button class="mini-btn">전체 모델</button></div><div class="setting-desc">모델을 미리 받아두면 첫 작업이 바로 시작됩니다.</div></div>
+      <div class="setting-card setting-toggle"><div class="copy"><div class="setting-title">프로그램 업데이트</div><div class="setting-desc">현재 v1.01 · GitHub Releases에서 새 버전을 확인합니다.</div></div><button class="mini-btn">업데이트 확인</button></div>
+    </div>
+    <div class="modal-actions"><button class="mini-btn" id="settingsCancel">닫기</button><button class="mini-btn gold" id="settingsSave">저장</button></div>
+  </div>
+</div>
+<input type="file" id="picker" accept="audio/*" multiple hidden>
+<script>
+const $=id=>document.getElementById(id);
+let rows=[
+ {type:'YT',title:'Graham Bonnet Band — Since You’ve Been Gone',state:'대기'},
+ {type:'YT',title:'실리카겔 — Tik Tak Tok',state:'대기'},
+ {type:'FILE',title:'브로큰발렌타인 — 알루미늄.wav',state:'대기'},
+ {type:'YT',title:'Nickelback — Animals (LIVE)',state:'대기'},
+ {type:'YT',title:'The Vicious Head Society — The Void',state:'대기'},
+ {type:'FILE',title:'Journey — Open Arms.flac',state:'대기'},
+ {type:'YT',title:'Heart — Alone (Official Video)',state:'대기'},
+ {type:'FILE',title:'Queen — I Want It All.mp3',state:'대기'}
+],running=false,stop=false;
+const modes=[
+ {name:'반주 + 코러스',spec:'FAST · 빠른 처리',hint:'가벼운 모델로 메인 보컬을 빠르게 줄입니다. 구형 PC에 적합합니다.'},
+ {name:'반주 + 코러스',spec:'RECOMMENDED · 균형 처리',hint:'메인 보컬을 자연스럽게 줄이고 코러스와 백킹 보컬은 반주에 남깁니다.'},
+ {name:'반주 + 코러스',spec:'HIGH QUALITY · 3모델 조합',hint:'3개 모델을 조합해 보컬 흔적을 줄이고 반주 손실을 최소화합니다.'},
+ {name:'모든 보컬 제거',spec:'CLEAN · 리드 + 코러스 제거',hint:'리드 보컬과 코러스까지 강하게 제거해 깨끗한 반주를 만듭니다.'},
+ {name:'보컬만 추출',spec:'VOCAL · 보컬 중심 출력',hint:'반주 성분을 줄이고 보컬 중심의 트랙만 별도로 추출해 저장합니다.'},
+ {name:'악기별 분리',spec:'4 STEMS · 멀티트랙 출력',hint:'보컬·드럼·베이스·나머지 악기를 네 개의 개별 트랙으로 나눠 저장합니다.'}
+];
+let modeIndex=1;
+let gpuOn=false,formatIndex=0,qualityIndex=1;
+const formats=[
+ {name:'WAV',quality:['16-BIT','24-BIT','32-BIT FLOAT']},
+ {name:'FLAC',quality:['16-BIT','24-BIT']},
+ {name:'MP3',quality:['128 KBPS','192 KBPS','256 KBPS','320 KBPS']}
+];
+function render(){
+  $('count').textContent=rows.length+'곡';
+  if(!running)$('counter').textContent='0 / '+rows.length;
+  $('resetBtn').classList.toggle('armed',rows.length>0);
+  $('resetBtn').disabled=running;
+  $('queue').innerHTML=rows.length?rows.map((r,i)=>{
+    const active=!['대기','완료'].includes(r.state);
+    return `<div class="qrow ${r.state==='완료'?'done':''} ${active?'active':''}"><span class="src">${r.type}</span><span class="song">${r.title}</span><span class="state">${r.state}</span><button class="remove" data-i="${i}">×</button></div>`
+  }).join(''):'<div class="qrow"><span class="song" style="grid-column:1/-1;color:#776d5a;text-align:center">아직 담긴 곡이 없습니다.</span></div>';
+  document.querySelectorAll('.remove').forEach(b=>b.onclick=()=>{if(!running){rows.splice(+b.dataset.i,1);render()}});
+  const activeRow=$('queue').querySelector('.active');
+  if(activeRow)activeRow.scrollIntoView({block:'nearest',behavior:'smooth'});
+}
+function add(title,type='YT'){rows.push({type,title,state:'대기'});render()}
+$('resetBtn').onclick=()=>{if(running)return;rows=[];$('now').textContent='대기 중';$('counter').textContent='0 / 0';$('fill').style.width='0';$('pct').textContent='000%';setStage(null);$('log').innerHTML='<div>대기열이 초기화되었습니다.</div>';render()};
+$('url').addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.value.trim()){add('새 유튜브 곡 — 제목 확인 완료');e.target.value=''}});
+$('fileBtn').onclick=()=>$('picker').click(); $('picker').onchange=e=>[...e.target.files].forEach(f=>add(f.name,'FILE'));
+$('settingsBtn').onclick=()=>$('settingsOverlay').classList.add('open');
+['settingsClose','settingsCancel','settingsSave'].forEach(id=>$(id).onclick=()=>$('settingsOverlay').classList.remove('open'));
+$('folderBtn').onclick=()=>log('출력 폴더 열기 — C:\\Users\\USER\\Music\\Tube Vocal Removal','hot');
+function setMode(index){modeIndex=(index+modes.length)%modes.length;const m=modes[modeIndex];$('selectorDial').style.transform=`rotate(${-125+modeIndex*50}deg)`;$('programNo').textContent='P'+(modeIndex+1);$('modeName').textContent=m.name;$('modeSpec').textContent=m.spec;$('hint').textContent=m.hint;document.querySelectorAll('.detent').forEach((d,i)=>d.classList.toggle('on',i===modeIndex))}
+$('selectorDial').onclick=()=>setMode(modeIndex+1);
+$('selectorDial').onwheel=e=>{e.preventDefault();setMode(modeIndex+(e.deltaY>0?1:-1))};
+$('selectorDial').onkeydown=e=>{if(['ArrowRight','ArrowUp'].includes(e.key)){e.preventDefault();setMode(modeIndex+1)}if(['ArrowLeft','ArrowDown'].includes(e.key)){e.preventDefault();setMode(modeIndex-1)}};
+function knobAngle(index,count){return count===1?0:-125+(250*index/(count-1))}
+function updateEngine(){const f=formats[formatIndex];qualityIndex=Math.min(qualityIndex,f.quality.length-1);$('gpuKnob').style.transform=`rotate(${gpuOn?125:-125}deg)`;$('formatKnob').style.transform=`rotate(${knobAngle(formatIndex,formats.length)}deg)`;$('qualityKnob').style.transform=`rotate(${knobAngle(qualityIndex,f.quality.length)}deg)`;$('gpuValue').textContent=gpuOn?'ON':'OFF';$('formatValue').textContent=f.name;$('qualityValue').textContent=f.quality[qualityIndex];$('deviceDisplay').textContent=gpuOn?'DEVICE · NVIDIA GPU':'DEVICE · CPU';$('outputDisplay').textContent=f.name+' · '+f.quality[qualityIndex]}
+function bindKnob(id,change){const el=$(id);el.onclick=()=>change(1);el.onwheel=e=>{e.preventDefault();change(e.deltaY>0?1:-1)};el.onkeydown=e=>{if(['ArrowRight','ArrowUp'].includes(e.key)){e.preventDefault();change(1)}if(['ArrowLeft','ArrowDown'].includes(e.key)){e.preventDefault();change(-1)}}}
+bindKnob('gpuKnob',()=>{gpuOn=!gpuOn;updateEngine()});
+bindKnob('formatKnob',d=>{formatIndex=(formatIndex+d+formats.length)%formats.length;qualityIndex=Math.min(qualityIndex,formats[formatIndex].quality.length-1);updateEngine()});
+bindKnob('qualityKnob',d=>{const q=formats[formatIndex].quality;qualityIndex=(qualityIndex+d+q.length)%q.length;updateEngine()});
+['dragenter','dragover'].forEach(n=>document.addEventListener(n,e=>{e.preventDefault();$('machine').classList.add('drop-active')}));
+['dragleave','drop'].forEach(n=>document.addEventListener(n,e=>{e.preventDefault();$('machine').classList.remove('drop-active')}));
+document.addEventListener('drop',e=>[...e.dataTransfer.files].filter(f=>f.type.startsWith('audio/')||/\.(wav|flac|mp3|m4a)$/i.test(f.name)).forEach(f=>add(f.name,'FILE')));
+const wait=ms=>new Promise(r=>setTimeout(r,ms)); function log(s,c=''){let d=document.createElement('div');d.className=c;d.textContent=s;$('log').appendChild(d);$('log').scrollTop=$('log').scrollHeight}
+const stageOrder=['input','model','separate','output'];
+function setStage(stage,complete=false){
+  const activeIndex=stageOrder.indexOf(stage);
+  document.querySelectorAll('.stage-lamp').forEach((lamp,i)=>{
+    lamp.classList.toggle('active',!complete&&i===activeIndex);
+    lamp.classList.toggle('done',complete||activeIndex>i);
+  });
+  $('progressReadout').classList.toggle('complete',complete);
+}
+async function progress(a,b,ms,stage){setStage(stage);for(let p=a;p<=b&&!stop;p++){$('fill').style.width=p+'%';$('pct').textContent=String(p).padStart(3,'0')+'%';await wait(ms/(b-a+1))}}
+$('start').onclick=async()=>{
+  if(running){stop=true;return}
+  if(!rows.length)return;
+  running=true;stop=false;
+  $('start').classList.add('running');
+  $('start').innerHTML='<span class="record-dot"></span>중단';
+  $('log').innerHTML='';
+  const targets=rows.filter(r=>r.state!=='완료');
+  for(let i=0;i<targets.length&&!stop;i++){
+    const r=targets[i];
+    $('counter').textContent=(i+1)+' / '+targets.length;
+    $('now').textContent=r.title;
+    $('fill').style.width='0';
+    $('pct').textContent='000%';
+    if(r.type==='YT'){
+      r.state='다운로드';render();log(`[${i+1}/${targets.length}] 다운로드 중 — 유튜브 오디오 받기`,'hot');
+      await progress(0,20,650,'input');
+    }else{
+      r.state='파일 확인';render();log(`[${i+1}/${targets.length}] 로컬 파일 확인 완료`);
+      await progress(0,20,240,'input');
+    }
+    r.state='모델 준비';render();log(`[${i+1}/${targets.length}] AI 모델 준비 중`);
+    await progress(21,32,340,'model');
+    r.state='AI 추출';render();log(`[${i+1}/${targets.length}] AI 추출 진행 중`,'hot');
+    await progress(33,92,1700,'separate');
+    r.state='저장 중';render();log(`[${i+1}/${targets.length}] ${formats[formatIndex].name} 결과 저장 중`);
+    await progress(93,100,360,'output');
+    r.state='완료';render();log(`✓ 완료 — ${r.title}`,'ok');
+  }
+  if(stop){
+    log('작업이 사용자에 의해 중단되었습니다.');
+    rows.forEach(r=>{if(!['대기','완료'].includes(r.state))r.state='대기'});
+  }else{
+    $('now').textContent='모든 작업 완료';$('pct').textContent='100%';setStage(null,true);
+    log('✓ 대기열 처리가 완료되었습니다.','ok');
+  }
+  running=false;stop=false;$('start').classList.remove('running');
+  $('start').innerHTML='<span class="record-dot"></span>분리 시작';render();
+};
+render();setMode(1);updateEngine();
+setTimeout(()=>$('start').click(),900);
+</script>
+</body>
+</html>

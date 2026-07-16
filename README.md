@@ -1,15 +1,16 @@
-# Tube Vocal Removal v1.00
+# Tube Vocal Removal v2.00
 
 유튜브 링크나 오디오 파일에서 **보컬과 반주를 AI로 분리**하는 Windows 프로그램입니다.
 개인 보컬 연습 용도로 만들어졌습니다.
 
 ## 다운로드
 
-[Releases 페이지](../../releases)에서 설치 파일(`Tube-Vocal-Removal-Setup-v1.00.exe`)을 받아 실행하세요.
+[Releases 페이지](../../releases)에서 설치 파일(`Tube-Vocal-Removal-Setup-v2.00.exe`)을 받아 실행하세요.
 
 - 지원 환경: Windows 10 / 11 (64비트)
 - AI 모델은 첫 사용 시 자동으로 다운로드됩니다 (인터넷 연결 필요)
 - 기본은 CPU로 동작하며, NVIDIA GPU가 있으면 설정에서 켤 수 있습니다
+- 설정에서 GitHub Releases의 최신 버전을 확인하고 안전하게 업데이트할 수 있습니다
 
 ## 사용법
 
