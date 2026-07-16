@@ -117,6 +117,22 @@ Roformer 계열은 UVR5 v5.6 기본 목록에 포함된 UVR 제작 모델이 아
 
 ### 남은 배포 작업 (v2.00)
 
-- Inno Setup으로 `Tube-Vocal-Removal-Setup-v2.00.exe` 빌드
-- GitHub 릴리즈 v2.00 업로드 (업로드하면 v1.x 사용자에게 앱 내 업데이트 표시)
+- Inno Setup으로 `Tube-Vocal-Removal-Setup-v2.00.exe` 빌드 → 완료, 릴리즈 v2.00 업로드됨
 - requirements.txt의 미사용 torchvision·imageio-ffmpeg 제거 검토
+
+## 2026-07-16 v2.01 (Claude)
+
+### 볼륨 보정 기능 (기본 ON, 설정에서 OFF 가능)
+
+- 문제: 분리 결과가 곡마다 음량이 다르고(원본 차이 + 보컬 에너지 소실), 곡 안에서도 보컬 구간마다 반주가 꺼지는 출렁임(모델 아티팩트)이 있었음
+- 해결 체인: 워커가 무손실 WAV로 중간 출력 → `dynaudnorm`(f=1000, 최대 6배)으로 구간 평탄화 → `loudnorm -14 LUFS` 2-pass linear로 최종 음량 고정 → 최종 형식 1회 인코딩 (추가 손실 0)
+- 악기별 분리(demucs)는 스템 간 밸런스 보존을 위해 자동 제외
+- -14 LUFS 선택 근거: 유튜브·스포티파이 재생 기준 음량. ffmpeg-normalize 패키지는 불필요 (동봉 ffmpeg의 loudnorm 필터 직접 사용). matchering(원곡 매칭 방식)도 검토했으나 고정 기준이 곡 간 통일에 더 적합
+- 바탕화면 "볼륨 평준화 샘플" 폴더에 방식·강도별 비교 샘플 9종 생성해 청취 검증
+
+### 기타
+
+- 프로그램 셀렉터(P1~P6) 선택을 config `mode`로 저장해 재실행 시 복원
+- UI: TRACK/PROGRESS 영문 헤더 통일, 대기열을 곡 추가 패널에 병합, 곡 제목 LCD 제거, RESET이 진행 상황(로그·램프·바)도 초기화, 초록 스크린 상단 픽셀 정렬, 입력창 중앙 정렬
+- UVR5 대비 품질 의혹 검증: UVR5 설정 파일(data.pkl) 확인 결과 사용자는 Inst HQ 5(SDR 15.30)를 쓰고 있었고, 같은 소스 A/B에서 우리 P4 BS-Roformer(16.45)가 더 좋다고 사용자 확인. 엔진은 동일 계열
+- 버전 v2.01, 테스트 24개, E2E 스모크(30초 클립 분리→보정→저장) 통과
