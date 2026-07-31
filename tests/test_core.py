@@ -186,6 +186,7 @@ class CoreTests(unittest.TestCase):
             api._window = mock.Mock()
             api._update_installer = installer
             with mock.patch("app.api.tempfile.gettempdir", return_value=tmp), \
+                    mock.patch("app.api.IS_MACOS", False), \
                     mock.patch("app.api.subprocess.Popen") as popen:
                 self.assertTrue(api.apply_update())
             command = popen.call_args.args[0]
@@ -196,6 +197,20 @@ class CoreTests(unittest.TestCase):
             api._window.destroy.assert_called_once()
             states = [event for event in api.poll_events() if event.get("type") == "update_state"]
             self.assertEqual(states[-1]["state"], "installing")
+
+    def test_apply_update_opens_dmg_for_manual_install_on_macos(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            installer = Path(tmp) / "Tube-Vocal-Removal.dmg"
+            installer.write_bytes(b"dmg")
+            api = Api()
+            api._window = mock.Mock()
+            api._update_installer = installer
+            with mock.patch("app.api.IS_MACOS", True), mock.patch("app.api.open_path") as open_path:
+                self.assertTrue(api.apply_update())
+            open_path.assert_called_once_with(installer)
+            api._window.destroy.assert_not_called()
+            states = [event for event in api.poll_events() if event.get("type") == "update_state"]
+            self.assertEqual(states[-1]["state"], "manual_install")
 
     def test_apply_update_waits_for_model_download(self):
         with tempfile.TemporaryDirectory() as tmp:
