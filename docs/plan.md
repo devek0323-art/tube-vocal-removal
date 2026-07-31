@@ -11,7 +11,7 @@
 - 유튜브 링크를 입력하면 mp3로 다운로드한 뒤 자동으로 보컬(Vocals) / 반주(Instrumental)를 분리해서 저장한다.
 - 로컬 오디오 파일도 동일하게 처리할 수 있다.
 - UVR의 낡은 Tkinter UI 대신 새 UI를 제공한다.
-- 환경: Windows 10, NVIDIA GPU (CUDA 가속 사용).
+- 환경: Windows 10/11은 NVIDIA CUDA 또는 CPU, macOS 14+ Apple Silicon은 MPS/CoreML 또는 CPU.
 
 ## 2. 접근 방식 비교
 

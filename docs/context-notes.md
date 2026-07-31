@@ -171,14 +171,14 @@ Roformer 계열은 UVR5 v5.6 기본 목록에 포함된 UVR 제작 모델이 아
 - 수정: `Pipeline._download_cache`(URL→파일). 첫 항목만 yt-dlp, 나머지는 `TEMP_DIR/download_cache`에서 복사 재사용. `reset()`에서 캐시 클리어. 테스트 38개
 
 ### 릴리즈
-- v2.02 릴리즈: `Tube-Vocal-Removal-Setup-v2.02.exe`(1.779GiB, 폰트 포함) → GitHub Releases 업로드. SHA-256 `872762149359DF319ACE76149BF5449171E42CC1BF976ED7F17AFC5CFDC90CE9`
-- 저장소는 PUBLIC 배포용이며 코드는 `.gitignore`로 비공개 유지. 로컬에는 현재 v2.02 설치 파일만 보존하고 재생성 가능한 `build/`, `dist/`, 테스트 `output/`, 이전 설치 파일은 정리함
+- v2.02 릴리즈: `Tube-Vocal-Removal-Setup-v2.02.exe`(1.779GiB, 폰트 포함) 교체 검증 완료. SHA-256 `B53E2ED4B0AD8A7C0384D5640B7DCDCA473684335DD23876876B116F358BFD48`
+- 저장소는 소스 공개로 전환. 모델·외부 실행 파일·빌드 산출물만 `.gitignore`로 제외하고 CI에서 공식 배포본을 내려받아 패키징함
 
 ### 맥 포팅 (v2.1 예정, 방향 확정)
 - **배포: 무료(서명·공증 없이)** — Apple $99 미사용. 사용자가 Gatekeeper에서 "확인 없이 열기"(시스템 설정) 한 단계 거침. Windows SmartScreen과 동급 마찰. 최신 macOS 15+는 우클릭 열기 불가라 시스템 설정 경로 안내 필요
 - **GPU: 애플실리콘 MPS 가속** — CUDA(엔비디아 전용)는 맥에 없음. M1/M2/M3은 PyTorch `mps` 백엔드로 자체 GPU 사용. 인텔 맥은 CPU 폴백. audio-separator의 MPS 지원 범위는 실기기 검증 필요(일부 연산 CPU 폴백 가능)
-- **작업 항목**: ①플랫폼 분기(`.exe`→OS별 바이너리, `CREATE_NO_WINDOW` 등 `if sys.platform=="win32"`, torch device에 mps 분기) ②맥 바이너리 3종(ffmpeg/yt-dlp/deno) ③`requirements-mac.txt`(CPU/MPS torch, onnxruntime, CUDA 제거) ④`TubeVocalRemoval-mac.spec`(.app, .icns) ⑤`.github/workflows/build.yml`(windows+macos 매트릭스, macos runner가 .app→.dmg 빌드) ⑥맥 있는 베타테스터 실사용 검증
-- 코드를 GitHub에 올려야 Actions가 빌드 → 현재 public repo(문서+배포) 그대로 쓰거나 코드용 저장소 필요 (코드 공개 여부는 사용자가 크게 개의치 않음)
+- **구현 완료**: ①플랫폼 분기 ②맥 바이너리 3종 자동 준비 ③`requirements-mac.txt` ④`TubeVocalRemoval-mac.spec` ⑤Windows/macOS GitHub Actions 매트릭스 및 DMG 패키징
+- **남은 검증**: 실제 Apple Silicon Mac에서 최초 실행·모델 다운로드·분리·MPS/CoreML 가속 확인
 
 ### 그 외 향후
 - 검토: CPU/GPU 런타임 분리(용량 축소), Microsoft Store MSIX

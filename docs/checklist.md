@@ -38,12 +38,12 @@
 
 ## v2.02 진행 상황
 
-### 완료 (백엔드 + 빌드 준비, 테스트 38개 통과)
+### 완료 (백엔드 + 빌드 준비, 테스트 40개 통과)
 - [x] 가사 자동 저장 — `app/lyrics.py`: 해외 싱크 소스 우선 → 국내 가사 소스 폴백 → 없으면 스킵, 가수+곡+길이 검증으로 오매칭 방지
 - [x] 키 감지 — `app/keyshift.py` `detect_key()`: librosa 크로마 + K-S 프로파일 (madmom은 git-master라 빌드 번들 리스크로 미채용)
 - [x] 키 시프트 — `app/keyshift.py` `shift_file()`: Signalsmith Stretch(python-stretch, MIT), 템포 유지·길이 완전 보존 검증. 드럼 보존 경로는 이득 없어 폐기
 - [x] 파이프라인 연결 — `_separate`에 키 이동(WAV 중간산출→시프트→인코딩) + 가사 저장, `config` key_shift(-6~+6)·download_lyrics 추가
-- [x] 업데이트 UX — /SILENT(진행 표시) + /RESTARTAPPLICATIONS + .iss RestartApplications=yes (설치 후 앱 자동 재실행)
+- [x] 업데이트 UX — 다운로드·무결성 검사 후 설치 실행 상태를 즉시 표시하고, 설치기에서 앱을 안정적으로 재실행
 - [x] 빌드 준비 — spec에 python_stretch·soundfile·librosa 번들, contents_directory="runtime"(_internal 개명), 버전 2.02(version.py·iss·version_info)
 
 ### UI 반영 완료
@@ -53,15 +53,21 @@
 - [x] 앰버 필 토글 스위치, 설정 설명 간결화
 
 ### 빌드·릴리즈 완료 (2026-07-31)
-- [x] 단위 테스트 38개, compileall, 프로즌 리소스·분리 스모크 통과
+- [x] 단위 테스트 40개, compileall, 프로즌 리소스·분리 스모크 통과
 - [x] PyInstaller 재빌드(런타임 폴더 개명, Signalsmith/soundfile 번들 확인)
 - [x] Inno Setup 설치 파일 생성 — release/Tube-Vocal-Removal-Setup-v2.02.exe (1.78GB)
-- [x] GitHub Release v2.02 업로드 + 문서 커밋·푸시(코드 비공개)
+- [x] GitHub Release v2.02 업로드 및 설치 파일 교체 검증
 - [x] 로컬 정리 — 재생성 가능한 build/dist, 테스트 output, v2.00·v2.01 설치 파일, Python 캐시 제거
+- [x] 같은 URL 재사용 시 임시 해시가 아닌 원래 곡 제목으로 폴더·파일명 유지
+- [x] 소스 공개 전환 — 런타임 모델·바이너리·빌드 결과만 제외하도록 `.gitignore` 정리
+- [x] Windows/macOS 플랫폼 분기 — 실행 파일명, subprocess 플래그, 폴더 열기, 프로세스 종료
+- [x] Apple Silicon MPS/CoreML 가속 및 CPU 폴백
+- [x] macOS 의존성·PyInstaller `.app` spec·DMG GitHub Actions 빌드 추가
 
 ### 남음
 - [ ] 빌드된 앱에서 키 변경 수동 확인 1회 (frozen python_stretch 실행 경로)
-- [ ] 검토: CPU/GPU 런타임 분리(설치 용량·시간 축소), Microsoft Store MSIX 배포, 맥 포팅(GitHub Actions 매트릭스)
+- [ ] 검토: CPU/GPU 런타임 분리(설치 용량·시간 축소), Microsoft Store MSIX 배포
+- [ ] 실제 Apple Silicon Mac에서 최초 실행·모델 다운로드·전체 분리 E2E 검증
 
 ### 폐기 결정
 - 코러스만 추출(P7): 리드-코러스가 원리적으로 겹쳐 리드 잔여 불가피. BVE 전용 모델·2단계 캐스케이드·2단계 모델 교체 모두 품질 미달. MVSep 등 유료도 동일 한계라 미채용.

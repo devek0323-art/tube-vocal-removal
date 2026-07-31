@@ -1,42 +1,45 @@
-# 파이썬 가상환경
+# Python environments and caches
 .venv/
 __pycache__/
-*.pyc
+*.py[cod]
 
-# 분리 결과물 / 임시 작업 파일
+# Runtime data, downloaded models, and generated audio
+models/
 output/
 temp/
 *.wav
 *.flac
 *.m4a
 *.mp3
+*.opus
+*.ogg
+*.webm
 
-# 모델 가중치 (수백 MB — 첫 실행 시 자동 다운로드됨)
-models/
-
-# 빌드 산출물
-build/
-dist/
-*.spec
-
-# 도구/에디터
-.bkit/
-.claude/
-.test-e2e/
+# Build outputs and release packages
 build/
 dist/
 release/
-output/
+build-assets/*
+!build-assets/.gitkeep
 *.spec.bak
+*.exe
+*.dmg
+*.zip
 smoke-*.json
 
-# 비공개 — 코드는 저장소에 올리지 않음 (배포는 Releases의 설치 파일로만)
-app/
-bin/
-tests/
-installer/
-build.ps1
-requirements.txt
-클로드 오피니언.md
+# Bundled third-party tools are fetched by scripts/prepare_tools.py
+bin/*
+!bin/.gitkeep
+
+# Agent/editor state and local logs
+.bkit/
+.claude/
+.test-e2e/
 *.log
 *.pid
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/

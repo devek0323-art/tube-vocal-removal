@@ -1,0 +1,96 @@
+name: Build desktop apps
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            platform: windows
+            requirements: requirements.txt
+            artifact: Tube-Vocal-Removal-Windows
+          - os: macos-15
+            platform: macos
+            requirements: requirements-mac.txt
+            artifact: Tube-Vocal-Removal-macOS-arm64
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 120
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: ${{ matrix.requirements }}
+
+      - name: Install dependencies
+        run: python -m pip install -r "${{ matrix.requirements }}"
+
+      - name: Prepare bundled tools
+        run: python scripts/prepare_tools.py "${{ matrix.platform }}"
+
+      - name: Verify tool architecture and filters (macOS)
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: |
+          file bin/ffmpeg bin/yt-dlp bin/deno
+          bin/ffmpeg -hide_banner -filters | grep -E 'dynaudnorm|loudnorm'
+          bin/deno --version
+          bin/yt-dlp --version
+
+      - name: Run tests
+        run: python -m unittest tests.test_core -q
+
+      - name: Build Windows app
+        if: matrix.platform == 'windows'
+        run: pyinstaller TubeVocalRemoval.spec --noconfirm
+
+      - name: Package Windows build
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: Compress-Archive -Path 'dist/Tube Vocal Removal/*' -DestinationPath 'Tube-Vocal-Removal-Windows.zip'
+
+      - name: Create macOS icon
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: bash scripts/create_macos_icon.sh
+
+      - name: Build macOS app
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: pyinstaller TubeVocalRemoval-mac.spec --noconfirm
+
+      - name: Smoke-test macOS app
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: |
+          "dist/Tube Vocal Removal.app/Contents/MacOS/Tube Vocal Removal" --smoke-test "$RUNNER_TEMP/mac-smoke.json"
+          cat "$RUNNER_TEMP/mac-smoke.json"
+
+      - name: Package macOS DMG
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: |
+          mkdir -p dmg-root
+          cp -R "dist/Tube Vocal Removal.app" dmg-root/
+          ln -s /Applications dmg-root/Applications
+          hdiutil create -volname "Tube Vocal Removal" -srcfolder dmg-root -ov -format UDZO "Tube-Vocal-Removal-macOS-arm64.dmg"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            Tube-Vocal-Removal-Windows.zip
+            Tube-Vocal-Removal-macOS-arm64.dmg
+          if-no-files-found: error
+          retention-days: 14
