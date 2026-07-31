@@ -1,18 +1,29 @@
 # Tube Vocal Removal v2.02
 
-유튜브 링크나 오디오 파일에서 **보컬과 반주를 AI로 분리**하는 Windows 프로그램입니다.
+유튜브 링크나 오디오 파일에서 **보컬과 반주를 AI로 분리**하는 데스크톱 프로그램입니다.
 개인 보컬 연습 용도로 만들어졌습니다.
 
 ## 다운로드
 
 [Releases 페이지](../../releases)에서 설치 파일(`Tube-Vocal-Removal-Setup-v2.02.exe`)을 받아 실행하세요.
 
-- v2.02 SHA-256: `872762149359DF319ACE76149BF5449171E42CC1BF976ED7F17AFC5CFDC90CE9`
+- v2.02 SHA-256: `B53E2ED4B0AD8A7C0384D5640B7DCDCA473684335DD23876876B116F358BFD48`
 
 - 지원 환경: Windows 10 / 11 (64비트)
 - AI 모델은 첫 사용 시 자동으로 다운로드됩니다 (인터넷 연결 필요)
 - 기본은 CPU로 동작하며, NVIDIA GPU가 있으면 설정에서 켤 수 있습니다
 - 설정에서 GitHub Releases의 최신 버전을 확인하고 안전하게 업데이트할 수 있습니다
+
+### macOS 베타 빌드
+
+Apple Silicon(M1 이상)용 `.app`/`.dmg` 빌드 구성을 포함합니다. GitHub Actions의
+`Tube-Vocal-Removal-macOS-arm64` 아티팩트에서 시험 빌드를 받을 수 있습니다.
+
+- 지원 목표: macOS 14 이상, Apple Silicon
+- GPU 가속: NVIDIA CUDA 대신 PyTorch MPS 및 ONNX Runtime CoreML을 사용하며,
+  지원하지 않는 모델 연산은 CPU로 처리됩니다
+- 아직 실제 Mac에서 전체 분리 과정을 검증하지 않은 베타입니다
+- 서명·공증되지 않은 개발 빌드이므로 Gatekeeper 경고가 표시될 수 있습니다
 
 ## 사용법
 
@@ -22,6 +33,28 @@
 4. "분리 시작" 클릭 → 완료되면 출력 폴더에 곡별로 저장
 
 여러 곡을 한 번에 담아 순차 처리할 수 있고, 처리 중에도 곡을 추가할 수 있습니다.
+
+## 소스에서 빌드
+
+Python 3.12를 사용합니다. `bin/`의 FFmpeg, yt-dlp, Deno는 저장소에 직접 넣지 않고
+`scripts/prepare_tools.py`가 공식 배포본을 준비합니다.
+
+```powershell
+# Windows
+python -m pip install -r requirements.txt
+python scripts/prepare_tools.py windows
+pyinstaller TubeVocalRemoval.spec --noconfirm
+```
+
+```bash
+# macOS (Apple Silicon)
+python3 -m pip install -r requirements-mac.txt
+python3 scripts/prepare_tools.py macos
+bash scripts/create_macos_icon.sh
+pyinstaller TubeVocalRemoval-mac.spec --noconfirm
+```
+
+두 플랫폼의 전체 패키징 절차는 `.github/workflows/build.yml`에 정의되어 있습니다.
 
 ### v2.02 새 기능
 

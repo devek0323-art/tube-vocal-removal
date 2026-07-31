@@ -1,0 +1,21 @@
+이 폴더의 글꼴은 SIL Open Font License 1.1 (OFL) 하에 배포됩니다.
+This directory bundles fonts licensed under the SIL Open Font License, Version 1.1.
+
+────────────────────────────────────────────────────────
+1. Pretendard (PretendardVariable.woff2)
+   Copyright (c) 2021 Kil Hyung-jin (https://github.com/orioncactus/pretendard),
+   with Reserved Font Name "Pretendard".
+   Source: https://github.com/orioncactus/pretendard
+
+2. Cascadia Code (cascadia-400.woff2, cascadia-700.woff2)
+   Copyright (c) Microsoft Corporation.
+   Source: https://github.com/microsoft/cascadia-code
+────────────────────────────────────────────────────────
+
+두 글꼴 모두 SIL Open Font License, Version 1.1을 따릅니다.
+전체 라이선스 원문: https://openfontlicense.org/open-font-license-official-text/
+
+이 라이선스의 핵심 조건:
+- 글꼴을 소프트웨어에 번들(포함)해 배포·판매하는 것은 허용됩니다.
+- 글꼴 파일 자체를 단독 상품으로 판매하는 것은 금지됩니다.
+- 이 저작권·라이선스 고지를 함께 배포해야 합니다.
