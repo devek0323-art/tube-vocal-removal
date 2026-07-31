@@ -7,6 +7,8 @@
 
 [Releases 페이지](../../releases)에서 설치 파일(`Tube-Vocal-Removal-Setup-v2.02.exe`)을 받아 실행하세요.
 
+- v2.02 SHA-256: `872762149359DF319ACE76149BF5449171E42CC1BF976ED7F17AFC5CFDC90CE9`
+
 - 지원 환경: Windows 10 / 11 (64비트)
 - AI 모델은 첫 사용 시 자동으로 다운로드됩니다 (인터넷 연결 필요)
 - 기본은 CPU로 동작하며, NVIDIA GPU가 있으면 설정에서 켤 수 있습니다
