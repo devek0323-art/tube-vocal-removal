@@ -136,3 +136,48 @@ Roformer 계열은 UVR5 v5.6 기본 목록에 포함된 UVR 제작 모델이 아
 - UI: TRACK/PROGRESS 영문 헤더 통일, 대기열을 곡 추가 패널에 병합, 곡 제목 LCD 제거, RESET이 진행 상황(로그·램프·바)도 초기화, 초록 스크린 상단 픽셀 정렬, 입력창 중앙 정렬
 - UVR5 대비 품질 의혹 검증: UVR5 설정 파일(data.pkl) 확인 결과 사용자는 Inst HQ 5(SDR 15.30)를 쓰고 있었고, 같은 소스 A/B에서 우리 P4 BS-Roformer(16.45)가 더 좋다고 사용자 확인. 엔진은 동일 계열
 - 버전 v2.01, 테스트 24개, E2E 스모크(30초 클립 분리→보정→저장) 통과
+
+## 2026-07-30 v2.02 (Claude)
+
+### 가사 자동 저장 (기본 ON, 부가 기능)
+- `app/lyrics.py` 신규. 흐름: 해외 싱크 소스(LRCLIB `/api/get`+길이→`/api/search`) → 국내 가사 소스(제목 검색→트랙 페이지 `<xmp>` 파싱) → 둘 다 없으면 조용히 스킵
+- 오매칭 방지: 제목/가수/길이 정규화 후 substring 검증(`_similar`). 예 — "아이유 좋은날" 검색 시 "윤하 고백하기 좋은날" 같은 동명 부분일치를 가수 불일치로 거부
+- 국내 소스는 코드·결과에서 이름 비노출(`source="web"`), 문서·UI에는 "가사 지원"으로만 표기. 브라우저 UA로 요청, LRCLIB 미스일 때만 호출해 트래픽 최소화
+- 저장: 곡 폴더에 `{제목} (가사).txt`. 싱크 가사가 있으면 `.lrc`도 함께. 실패는 try/except로 삼켜 본 기능(분리)에 영향 없음
+- 파이프라인 연결: `Pipeline._save_lyrics(item, song_dir)`를 `_separate` 말미(무브/보정 후)에서 `download_lyrics` 켜졌을 때 호출
+
+### 키 감지 + 키 시프트 (기본 원키 ±0)
+- `app/keyshift.py` 신규. `detect_key()`: librosa `chroma_cqt` + Krumhansl-Schmuckler 프로파일 상관도로 조성 추정("C# minor" 형식). madmom(0.17.dev, git-master)은 정확하나 PyInstaller 번들 리스크가 커서 미채용
+- `shift_file()`: Signalsmith Stretch(`python-stretch` 0.3.1, MIT). 피치만 반음 이동, 템포·길이 완전 보존(실측 프레임 수 동일). R3(rubberband GPL exe) 대비 동급 품질 + 동봉 불필요 + 3배 빠름이라 채택. 입력 배열은 `ascontiguousarray(T)` 필수(메모리 레이아웃)
+- 파이프라인 연결: `_run_separation_process`의 `needs_wav = volume_fix or key_shift`(demucs 제외)로 워커에서 무손실 WAV 수령 → `_separate`에서 시프트 → `_normalize_and_encode`(보정 시) 또는 `_encode_audio`(보정 없이 키만) 로 최종 1회 인코딩
+- `config`: `key_shift`(-6~+6 클램프), `download_lyrics`(bool) 추가
+
+### 코러스 추출(P7) 폐기
+- 리드/코러스가 주파수·시간에서 겹쳐 원리적으로 리드 잔여 불가피. 체인(보컬추출→카라오케), BVE 전용 모델, 2단계 모델 교체(becruily/gaboxV2/UVR6HP) 모두 품질 미달. MVSep 등 유료도 다단계 캐스케이드로 동일 한계라 미채용
+
+### 빌드
+- `TubeVocalRemoval.spec`: python_stretch·soundfile·librosa `collect_all` 번들 + hiddenimports. `EXE(contents_directory="runtime")`로 `_internal` 폴더 개명. 폰트 폴더(`app/ui/fonts`) datas 추가
+- 업데이트 UX: `apply_update`를 `/SILENT`(진행 막대 노출) + `/RESTARTAPPLICATIONS`로, `.iss`는 `RestartApplications=yes`로 바꿔 무음 설치 후 앱 자동 재실행
+- 버전 2.02: `version.py`, `installer/version_info.txt`(2,0,2,0), `installer/TubeVocalRemoval.iss`
+- ISCC 경로: `C:\Users\RYAN\AppData\Local\Programs\Inno Setup 6\ISCC.exe` (Program Files 아님 — 이전에 못 찾았던 원인). 설치 파일 빌드 ~12분
+
+### UI 개편 (카세트 버튼 + 폰트 번들)
+- 프로그램 셀렉터를 로터리 노브 → **카세트 피아노키 버튼 P1~P6**(2열 3행)로 교체. 노브의 동심원 정렬 이슈 완전 해소. 버튼 폰트는 `var(--font)`(산세리프), 눌림 시 초록 점등
+- LED 세그먼트 진행 미터(초록→노랑→빨강), PROGRESS 헤더·나사 장식 제거로 컴팩트화, 앰버 필 토글, 타이틀바 버전만 흐린 텍스트로(동적, `get_app_version`), 대기열 곡별 키(감지→목표 ±)·가사(♪), 창 728px, 패딩 11px 균일
+- **폰트 번들**: `app/ui/fonts`에 PretendardVariable.woff2(2MB)·Cascadia 400/700(각 30KB) + OFL LICENSE.txt. index.html에 `@font-face`(file:// 상대경로), spec datas 등록. 사용자 PC에 글꼴 없어도 동일 화면. 둘 다 OFL이라 번들 합법
+
+### 다운로드 캐시 (같은 링크 다중 키 차단 수정)
+- 문제: 같은 URL을 여러 키로 넣으면 항목마다 따로 다운로드 → 유튜브 반복 차단으로 "실패"
+- 수정: `Pipeline._download_cache`(URL→파일). 첫 항목만 yt-dlp, 나머지는 `TEMP_DIR/download_cache`에서 복사 재사용. `reset()`에서 캐시 클리어. 테스트 38개
+
+### 릴리즈
+- v2.02 릴리즈: 설치 파일 `Setup-v2.02.exe`(폰트 포함) → GitHub Releases 업로드. 저장소 PUBLIC(배포), 코드는 gitignore로 비공개 유지
+
+### 맥 포팅 (v2.1 예정, 방향 확정)
+- **배포: 무료(서명·공증 없이)** — Apple $99 미사용. 사용자가 Gatekeeper에서 "확인 없이 열기"(시스템 설정) 한 단계 거침. Windows SmartScreen과 동급 마찰. 최신 macOS 15+는 우클릭 열기 불가라 시스템 설정 경로 안내 필요
+- **GPU: 애플실리콘 MPS 가속** — CUDA(엔비디아 전용)는 맥에 없음. M1/M2/M3은 PyTorch `mps` 백엔드로 자체 GPU 사용. 인텔 맥은 CPU 폴백. audio-separator의 MPS 지원 범위는 실기기 검증 필요(일부 연산 CPU 폴백 가능)
+- **작업 항목**: ①플랫폼 분기(`.exe`→OS별 바이너리, `CREATE_NO_WINDOW` 등 `if sys.platform=="win32"`, torch device에 mps 분기) ②맥 바이너리 3종(ffmpeg/yt-dlp/deno) ③`requirements-mac.txt`(CPU/MPS torch, onnxruntime, CUDA 제거) ④`TubeVocalRemoval-mac.spec`(.app, .icns) ⑤`.github/workflows/build.yml`(windows+macos 매트릭스, macos runner가 .app→.dmg 빌드) ⑥맥 있는 베타테스터 실사용 검증
+- 코드를 GitHub에 올려야 Actions가 빌드 → 현재 public repo(문서+배포) 그대로 쓰거나 코드용 저장소 필요 (코드 공개 여부는 사용자가 크게 개의치 않음)
+
+### 그 외 향후
+- 검토: CPU/GPU 런타임 분리(용량 축소), Microsoft Store MSIX
