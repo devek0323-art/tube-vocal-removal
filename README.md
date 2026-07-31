@@ -5,24 +5,27 @@
 
 ## 다운로드
 
-[Releases 페이지](../../releases)에서 설치 파일(`Tube-Vocal-Removal-Setup-v2.02.exe`)을 받아 실행하세요.
+| 운영체제 | 다운로드 | 지원 환경 | GPU 가속 |
+|---|---|---|---|
+| Windows | [Tube-Vocal-Removal-Setup-v2.02.exe](https://github.com/devek0323-art/tube-vocal-removal/releases/download/v2.02/Tube-Vocal-Removal-Setup-v2.02.exe) | Windows 10/11 64비트 | NVIDIA CUDA 또는 CPU |
+| macOS | [Tube-Vocal-Removal-macOS-arm64.dmg](https://github.com/devek0323-art/tube-vocal-removal/releases/download/v2.02/Tube-Vocal-Removal-macOS-arm64.dmg) | macOS 14 이상, Apple Silicon(M1 이상) | Apple MPS/CoreML 또는 CPU |
 
-- v2.02 SHA-256: `B53E2ED4B0AD8A7C0384D5640B7DCDCA473684335DD23876876B116F358BFD48`
+파일 무결성 확인용 SHA-256:
 
-- 지원 환경: Windows 10 / 11 (64비트)
+- Windows: `B53E2ED4B0AD8A7C0384D5640B7DCDCA473684335DD23876876B116F358BFD48`
+- macOS: `4682859E58AE0445835B90CBE2104CB5F383128498834375F11D62EECA0A4B11`
+
 - AI 모델은 첫 사용 시 자동으로 다운로드됩니다 (인터넷 연결 필요)
-- 기본은 CPU로 동작하며, NVIDIA GPU가 있으면 설정에서 켤 수 있습니다
+- 기본은 CPU로 동작하며, 지원 GPU가 감지되면 설정에서 가속을 켤 수 있습니다
 - 설정에서 GitHub Releases의 최신 버전을 확인하고 안전하게 업데이트할 수 있습니다
 
-### macOS 베타 빌드
+### macOS 안내
 
-Apple Silicon(M1 이상)용 `.app`/`.dmg` 빌드 구성을 포함합니다. GitHub Actions의
-`Tube-Vocal-Removal-macOS-arm64` 아티팩트에서 시험 빌드를 받을 수 있습니다.
+macOS 버전은 Apple Silicon ARM64용 `.app`을 DMG로 제공합니다. NVIDIA CUDA 대신
+PyTorch MPS와 ONNX Runtime CoreML을 사용합니다.
 
-- 지원 목표: macOS 14 이상, Apple Silicon
-- GPU 가속: NVIDIA CUDA 대신 PyTorch MPS 및 ONNX Runtime CoreML을 사용하며,
-  지원하지 않는 모델 연산은 CPU로 처리됩니다
-- 아직 실제 Mac에서 전체 분리 과정을 검증하지 않은 베타입니다
+- GitHub의 Apple Silicon macOS 러너에서 빌드·앱 실행·리소스 검사·DMG 패키징을 통과했습니다
+- 실제 Mac에서 모델 다운로드 후 전체 곡 분리는 추가 실기기 검증이 필요합니다
 - 서명·공증되지 않은 개발 빌드이므로 Gatekeeper 경고가 표시될 수 있습니다
 
 ## 사용법
