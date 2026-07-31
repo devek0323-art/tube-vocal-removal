@@ -78,7 +78,7 @@ Roformer 계열은 UVR5 v5.6 기본 목록에 포함된 UVR 제작 모델이 아
 - 임시 경로 무인 설치 성공 및 설치된 EXE 리소스 스모크 통과
 - 제거 프로그램 정상 종료 및 임시 설치 폴더 제거 확인
 
-## 2026-07-16 v2.00 마무리 (Claude)
+## 2026-07-16 v2.00 마무리
 
 ### UI 확정 (레트로 하드웨어 스킨)
 
@@ -120,7 +120,7 @@ Roformer 계열은 UVR5 v5.6 기본 목록에 포함된 UVR 제작 모델이 아
 - Inno Setup으로 `Tube-Vocal-Removal-Setup-v2.00.exe` 빌드 → 완료, 릴리즈 v2.00 업로드됨
 - requirements.txt의 미사용 torchvision·imageio-ffmpeg 제거 검토
 
-## 2026-07-16 v2.01 (Claude)
+## 2026-07-16 v2.01
 
 ### 볼륨 보정 기능 (기본 ON, 설정에서 OFF 가능)
 
@@ -137,7 +137,7 @@ Roformer 계열은 UVR5 v5.6 기본 목록에 포함된 UVR 제작 모델이 아
 - UVR5 대비 품질 의혹 검증: UVR5 설정 파일(data.pkl) 확인 결과 사용자는 Inst HQ 5(SDR 15.30)를 쓰고 있었고, 같은 소스 A/B에서 우리 P4 BS-Roformer(16.45)가 더 좋다고 사용자 확인. 엔진은 동일 계열
 - 버전 v2.01, 테스트 24개, E2E 스모크(30초 클립 분리→보정→저장) 통과
 
-## 2026-07-30 v2.02 (Claude)
+## 2026-07-30 v2.02
 
 ### 가사 자동 저장 (기본 ON, 부가 기능)
 - `app/lyrics.py` 신규. 흐름: 해외 싱크 소스(LRCLIB `/api/get`+길이→`/api/search`) → 국내 가사 소스(제목 검색→트랙 페이지 `<xmp>` 파싱) → 둘 다 없으면 조용히 스킵
@@ -171,7 +171,8 @@ Roformer 계열은 UVR5 v5.6 기본 목록에 포함된 UVR 제작 모델이 아
 - 수정: `Pipeline._download_cache`(URL→파일). 첫 항목만 yt-dlp, 나머지는 `TEMP_DIR/download_cache`에서 복사 재사용. `reset()`에서 캐시 클리어. 테스트 38개
 
 ### 릴리즈
-- v2.02 릴리즈: 설치 파일 `Setup-v2.02.exe`(폰트 포함) → GitHub Releases 업로드. 저장소 PUBLIC(배포), 코드는 gitignore로 비공개 유지
+- v2.02 릴리즈: `Tube-Vocal-Removal-Setup-v2.02.exe`(1.779GiB, 폰트 포함) → GitHub Releases 업로드. SHA-256 `872762149359DF319ACE76149BF5449171E42CC1BF976ED7F17AFC5CFDC90CE9`
+- 저장소는 PUBLIC 배포용이며 코드는 `.gitignore`로 비공개 유지. 로컬에는 현재 v2.02 설치 파일만 보존하고 재생성 가능한 `build/`, `dist/`, 테스트 `output/`, 이전 설치 파일은 정리함
 
 ### 맥 포팅 (v2.1 예정, 방향 확정)
 - **배포: 무료(서명·공증 없이)** — Apple $99 미사용. 사용자가 Gatekeeper에서 "확인 없이 열기"(시스템 설정) 한 단계 거침. Windows SmartScreen과 동급 마찰. 최신 macOS 15+는 우클릭 열기 불가라 시스템 설정 경로 안내 필요

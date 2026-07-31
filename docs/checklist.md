@@ -38,7 +38,7 @@
 
 ## v2.02 진행 상황
 
-### 완료 (백엔드 + 빌드 준비, 테스트 36개 통과)
+### 완료 (백엔드 + 빌드 준비, 테스트 38개 통과)
 - [x] 가사 자동 저장 — `app/lyrics.py`: 해외 싱크 소스 우선 → 국내 가사 소스 폴백 → 없으면 스킵, 가수+곡+길이 검증으로 오매칭 방지
 - [x] 키 감지 — `app/keyshift.py` `detect_key()`: librosa 크로마 + K-S 프로파일 (madmom은 git-master라 빌드 번들 리스크로 미채용)
 - [x] 키 시프트 — `app/keyshift.py` `shift_file()`: Signalsmith Stretch(python-stretch, MIT), 템포 유지·길이 완전 보존 검증. 드럼 보존 경로는 이득 없어 폐기
@@ -56,9 +56,10 @@
 - [x] 단위 테스트 38개, compileall, 프로즌 리소스·분리 스모크 통과
 - [x] PyInstaller 재빌드(런타임 폴더 개명, Signalsmith/soundfile 번들 확인)
 - [x] Inno Setup 설치 파일 생성 — release/Tube-Vocal-Removal-Setup-v2.02.exe (1.78GB)
+- [x] GitHub Release v2.02 업로드 + 문서 커밋·푸시(코드 비공개)
+- [x] 로컬 정리 — 재생성 가능한 build/dist, 테스트 output, v2.00·v2.01 설치 파일, Python 캐시 제거
 
 ### 남음
-- [x] 릴리즈 v2.02 업로드 (gh release) + 문서 커밋·푸시(코드 비공개)
 - [ ] 빌드된 앱에서 키 변경 수동 확인 1회 (frozen python_stretch 실행 경로)
 - [ ] 검토: CPU/GPU 런타임 분리(설치 용량·시간 축소), Microsoft Store MSIX 배포, 맥 포팅(GitHub Actions 매트릭스)
 
