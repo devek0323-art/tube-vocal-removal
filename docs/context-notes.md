@@ -182,3 +182,24 @@ Roformer 계열은 UVR5 v5.6 기본 목록에 포함된 UVR 제작 모델이 아
 
 ### 그 외 향후
 - 검토: CPU/GPU 런타임 분리(용량 축소), Microsoft Store MSIX
+
+## 2026-08-02 v2.03 — RTX 50(Blackwell) 지원
+
+### 증상과 원인
+- RTX 5070 사용자가 GPU 모드로 실행 시 분리 결과 파일이 하나도 생성되지 않음 (CPU 모드는 정상)
+- 원인: 배포본 `torch 2.13.0+cu126`의 `get_arch_list()`가 `sm_50~sm_90`뿐. RTX 50은 `sm_120`(CC 12.0)이라 커널 없음. PTX(`compute_XX`) 항목도 없어 JIT 폴백 경로도 없음
+- 악화 요인: `torch.cuda.is_available()`은 드라이버 인식만 확인하므로 5070에서도 True → 워커가 cuda 경로 진입 후 첫 커널에서 사망 → `worker-response.json`에 ok:false, 파일 미생성
+- Codex 교차 검증으로 진단 일치 확인
+
+### 단일 빌드(cu130) 결정
+- torch 2.13.0 Windows 휠은 **cu126과 cu130만** 존재 (cu128/cu129 없음 — PyTorch 인덱스 직접 조회로 확인)
+- cu126: sm_50~90 (GTX 750~RTX 40) / cu130: sm_75~120 (RTX 20xx~50). CUDA 13이 Pascal 이하를 드랍해 **단일 휠로 전 세대 커버 불가**
+- 2종 빌드(cu126 레거시 + cu130 기본)를 검토했으나 릴리스 3.6GB·빌드 2배·사용자 선택 혼란·업데이터 자산 분기 비용 대비 이득이 적어 **폐기**
+- 결론: cu130 단일 빌드. GTX 10xx 이하는 CPU 폴백(앱 기본값이 CPU라 기능 손실 아님)
+- onnxruntime-gpu도 **1.27부터 CUDA 13 빌드**라 함께 상향. torch cu13 + ORT cu12 혼용은 DLL 충돌·조용한 CPU 폴백 위험이 있어 메이저를 맞춤
+
+### preflight 가드 (2단)
+- `platform_support.cuda_arch_supported(torch)` — 기기 CC와 `get_arch_list()` 대조. cubin은 같은 major 안에서 minor 상향만 호환되므로 `value // 10 == major and value % 10 <= minor`. `compute_XX`(PTX)가 있으면 이하 세대 허용. UI 표시(`accelerator_info`)와 스모크 테스트가 공유 → 미지원 GPU는 노브가 잠기고 "GPU 미감지"로 표시
+- `separation_worker._cuda_kernel_runs(torch)` — arch 대조 통과 후 **실제 커널 1회 실행**(`ones*2` → `synchronize()` → `sum().item()`). arch 대조만으로는 false negative 위험이 있어 최종 판정은 실연산으로 (Codex 권고)
+- 커널 실행을 UI 프로세스가 아닌 워커에서만 하는 이유: CUDA 컨텍스트가 생기면 UI 프로세스가 VRAM을 상시 점유함
+- 미지원 GPU에서 **raise 대신 CPU 폴백**으로 변경. `notice` 이벤트를 progress 채널로 보내 파이프라인이 로그에 표시. 결과물이 안 나오는 것보다 느려도 나오는 편이 낫다는 판단

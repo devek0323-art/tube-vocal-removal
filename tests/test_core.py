@@ -13,6 +13,7 @@ from app import config
 from app.api import Api
 from app.main import dropped_paths, smoke_test
 from app.pipeline import ALL_MODEL_MODES, MODE_MODELS, Item, Pipeline, sanitize_name, unique_dir
+from app.platform_support import cuda_arch_supported
 
 
 class FakeSeparator:
@@ -111,6 +112,27 @@ class CoreTests(unittest.TestCase):
             self.assertTrue(pipeline.download_model("karaoke", dict(config.DEFAULTS)))
         self.assertFalse(pipeline._cancel.is_set())
         fake_thread.start.assert_called_once()
+
+    def test_cuda_arch_check_rejects_missing_kernels(self):
+        def fake_torch(capability, arch_list):
+            return SimpleNamespace(cuda=SimpleNamespace(
+                is_available=lambda: True,
+                get_device_capability=lambda _index: capability,
+                get_arch_list=lambda: arch_list,
+            ))
+
+        cuda12 = ["sm_50", "sm_60", "sm_70", "sm_80", "sm_86", "sm_90"]
+        cuda13 = ["sm_75", "sm_80", "sm_86", "sm_90", "sm_100", "sm_120"]
+        # RTX 50(sm_120)은 CUDA 12 빌드에서 커널이 없고, CUDA 13 빌드에서만 동작한다.
+        self.assertFalse(cuda_arch_supported(fake_torch((12, 0), cuda12)))
+        self.assertTrue(cuda_arch_supported(fake_torch((12, 0), cuda13)))
+        # GTX 10xx(sm_61)는 반대로 CUDA 12 빌드에서만 동작한다.
+        self.assertTrue(cuda_arch_supported(fake_torch((6, 1), cuda12)))
+        self.assertFalse(cuda_arch_supported(fake_torch((6, 1), cuda13)))
+        # 같은 세대의 상위 minor(RTX 4090 sm_89)는 sm_80 커널로 실행된다.
+        self.assertTrue(cuda_arch_supported(fake_torch((8, 9), cuda13)))
+        # PTX가 있으면 드라이버가 JIT 컴파일한다.
+        self.assertTrue(cuda_arch_supported(fake_torch((12, 0), ["sm_90", "compute_90"])))
 
     def test_cpu_only_resource_smoke_is_successful(self):
         fake_torch = SimpleNamespace(cuda=SimpleNamespace(

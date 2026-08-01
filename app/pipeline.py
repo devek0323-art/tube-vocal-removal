@@ -532,6 +532,9 @@ class Pipeline:
 
         def handle_event(event):
             nonlocal last_inference_pct
+            if event.get("type") == "notice":
+                self._log(event.get("text", ""), False)
+                return
             if event.get("type") == "inference_progress":
                 last_inference_pct = max(0.0, min(100.0, float(event.get("pct", 0))))
                 self.emit({

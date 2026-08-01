@@ -1,5 +1,5 @@
 #define MyAppName "Tube Vocal Removal"
-#define MyAppVersion "2.02"
+#define MyAppVersion "2.03"
 #define MyAppPublisher "Tube Vocal Removal"
 #define MyAppExeName "Tube Vocal Removal.exe"
 
@@ -24,11 +24,11 @@ PrivilegesRequired=lowest
 UninstallDisplayIcon={app}\{#MyAppExeName}
 CloseApplications=yes
 RestartApplications=no
-VersionInfoVersion=2.0.2.0
+VersionInfoVersion=2.0.3.0
 VersionInfoCompany=Tube Vocal Removal
 VersionInfoDescription=Tube Vocal Removal 설치 프로그램
 VersionInfoProductName=Tube Vocal Removal
-VersionInfoProductVersion=2.02
+VersionInfoProductVersion=2.03
 VersionInfoCopyright=Copyright © 2026 Tube Vocal Removal
 
 [Languages]

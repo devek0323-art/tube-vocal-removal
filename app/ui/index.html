@@ -531,7 +531,7 @@
   <div class="tb-left">
     <span class="tb-title">Tube Vocal Removal</span>
   </div>
-  <span class="studio-mark" id="studioMark">v2.02</span>
+  <span class="studio-mark" id="studioMark">v2.03</span>
   <button class="cap-btn" id="minBtn" title="최소화" aria-label="최소화">─</button>
   <button class="cap-btn" id="maxBtn" title="최대화" aria-label="최대화">▢</button>
   <button class="cap-btn close" id="closeBtn" title="닫기" aria-label="닫기">✕</button>
@@ -674,7 +674,7 @@
       <div class="setting-card">
         <div class="setting-title">프로그램 업데이트</div>
         <div class="update-meta">
-          <span class="update-current" id="currentVersion">현재 버전 v2.02</span>
+          <span class="update-current" id="currentVersion">현재 버전 v2.03</span>
           <span class="update-latest" id="latestVersion">최신 버전 확인 전</span>
         </div>
         <button class="mini-btn update-btn" id="updateBtn" type="button">업데이트 확인</button>
@@ -1013,7 +1013,7 @@
         gpuAvailable = ev.available;
         gpuBackend = ev.backend || (ev.available ? "gpu" : "cpu");
         updateEngineControls();
-        addLog(ev.available ? "GPU 감지: " + ev.name : "GPU 미감지 — CPU 모드");
+        addLog(ev.available ? "GPU 감지: " + ev.name : "GPU 미감지 — CPU 모드 (NVIDIA는 드라이버 580 이상 필요)");
         break;
       }
     }

@@ -72,6 +72,31 @@
 ### 폐기 결정
 - 코러스만 추출(P7): 리드-코러스가 원리적으로 겹쳐 리드 잔여 불가피. BVE 전용 모델·2단계 캐스케이드·2단계 모델 교체 모두 품질 미달. MVSep 등 유료도 동일 한계라 미채용.
 
+## v2.03 진행 상황 — RTX 50(Blackwell) 지원
+
+원인: 기존 배포본 torch 2.13.0+cu126은 sm_50~sm_90 커널만 포함(PTX 없음) → RTX 50(sm_120)에서 커널 실행 실패로 분리 파일 미생성. `torch.cuda.is_available()`은 True라 GPU 경로로 진입한 뒤 첫 커널에서 죽음.
+
+결정: CUDA 13(cu130) **단일 빌드**. sm_75~sm_120 지원(RTX 20xx~50). CUDA 13이 Pascal 이하를 드랍해 GTX 10xx 이하는 GPU 가속 상실 → preflight 가드로 CPU 자동 폴백. 2종 빌드는 릴리스 3.6GB·선택 혼란 대비 이득이 적어 폐기.
+
+- [x] requirements — cu130 + onnxruntime-gpu>=1.27 (ORT는 1.27부터 CUDA 13 빌드). 실제 설치: torch 2.13.0+cu130, ORT 1.28.0
+- [x] GPU preflight — arch 목록 비교(UI 표시용) + 실제 커널 1회 실행(워커 최종 판정), 실패 시 CPU 폴백 + 안내 로그
+- [x] 버전 2.03 일괄 반영 (version.py·iss·version_info·index.html·lyrics UA·mac spec)
+- [x] README — 지원 그래픽 카드 명기
+- [x] .venv cu130 재설치, 테스트 42개 통과 (arch 가드 테스트 추가)
+- [x] cu130 arch 목록 실측 확인 — `['sm_75','sm_80','sm_86','sm_90','sm_100','sm_120']` (RTX 50 포함, Pascal 제외)
+- [x] 폴백 E2E — venv/frozen EXE 양쪽에서 use_gpu=True 요청 시 CPU 전환 + 결과 파일 정상 생성 확인
+- [x] PyInstaller 빌드(3.5GB), 리소스 스모크·실오디오 분리 스모크 통과
+- [ ] 설치파일 생성 + SHA-256 갱신
+- [ ] **GPU 실검증 보류** — 개발 PC 드라이버 566.36 < CUDA 13 요구치 580이라 로컬에서 CUDA 경로 확인 불가
+- [ ] GitHub Release v2.03 업로드 (macOS DMG는 CI 산출물 첨부 — 없으면 맥 업데이터가 오류)
+
+### 드라이버 요구사항 (릴리스 노트에 반드시 포함)
+CUDA 13은 NVIDIA 드라이버 **580 이상**을 요구한다. 카드가 sm_75 이상이어도 드라이버가 낮으면
+`cudaGetDeviceCount()`가 `cudaErrorNotSupported`를 반환해 GPU를 못 쓴다. 즉 v2.02에서 GPU가 되던
+RTX 30/40 사용자도 드라이버가 낮으면 CPU로 떨어진다(폴백 안내 문구로 업데이트 유도).
+`torch.cuda.get_device_capability(0)`은 이 상태에서 예외가 아니라 **세그폴트**를 내므로
+`cuda_arch_supported()`는 반드시 `is_available()` 확인을 먼저 한다.
+
 ## 배포 전 남은 작업
 
 - [ ] 모델이 없는 깨끗한 PC에서 최초 다운로드 테스트

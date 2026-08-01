@@ -82,6 +82,24 @@ def _install_inference_progress():
     vr_separator.tqdm = progress_tqdm
 
 
+def _cuda_kernel_runs(torch) -> bool:
+    """커널을 실제로 한 번 실행해 이 GPU에서 연산이 되는지 최종 확인한다.
+
+    `torch.cuda.is_available()`은 드라이버 인식만 보므로, 배포본에 해당 GPU용
+    커널이 없으면(예: CUDA 12 빌드 + RTX 50) 첫 연산에서야 실패한다.
+    """
+    from app.platform_support import cuda_arch_supported
+
+    if not cuda_arch_supported(torch):
+        return False
+    try:
+        probe = torch.ones(8, device="cuda") * 2
+        torch.cuda.synchronize()
+        return float(probe.sum().item()) == 16.0
+    except (RuntimeError, AssertionError):
+        return False
+
+
 def _write_response(path: Path, payload: dict):
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -104,9 +122,9 @@ def run_request(request_file: str) -> int:
     use_gpu = bool(request.get("use_gpu", False))
     _hide_all_child_consoles()
 
+    thread_count = min(8, max(1, (os.cpu_count() or 2) // 2))
     if not use_gpu:
         # 배포 환경에서 CPU가 무제한으로 점유되는 것을 막되 UVR의 Batch 1 모델 설정은 유지한다.
-        thread_count = min(8, max(1, (os.cpu_count() or 2) // 2))
         os.environ["OMP_NUM_THREADS"] = str(thread_count)
         os.environ["MKL_NUM_THREADS"] = str(thread_count)
         os.environ["OPENBLAS_NUM_THREADS"] = str(thread_count)
@@ -178,11 +196,16 @@ def run_request(request_file: str) -> int:
 
         mps_backend = getattr(torch.backends, "mps", None)
         mps_available = sys.platform == "darwin" and mps_backend is not None and mps_backend.is_available()
-        cuda_available = torch.cuda.is_available()
-        if use_gpu and not (cuda_available or mps_available):
-            raise RuntimeError("GPU 사용을 선택했지만 CUDA 또는 Apple Silicon MPS 가속을 사용할 수 없습니다.")
-        accelerator = "cuda" if use_gpu and cuda_available else "mps" if use_gpu and mps_available else "cpu"
-        if not use_gpu:
+        cuda_available = use_gpu and torch.cuda.is_available() and _cuda_kernel_runs(torch)
+        accelerator = "cuda" if cuda_available else "mps" if use_gpu and mps_available else "cpu"
+        if use_gpu and accelerator == "cpu":
+            # 실패시키는 대신 CPU로 진행한다. 지원하지 않는 GPU에서도 결과물은 나와야 한다.
+            _progress({
+                "type": "notice",
+                "text": "그래픽 카드 가속을 쓸 수 없어 CPU로 진행합니다. "
+                        "NVIDIA 카드라면 드라이버를 580 이상으로 업데이트하면 가속을 쓸 수 있습니다.",
+            })
+        if accelerator == "cpu":
             torch.set_num_threads(thread_count)
             try:
                 torch.set_num_interop_threads(1)
