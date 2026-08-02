@@ -86,9 +86,9 @@
 - [x] cu130 arch 목록 실측 확인 — `['sm_75','sm_80','sm_86','sm_90','sm_100','sm_120']` (RTX 50 포함, Pascal 제외)
 - [x] 폴백 E2E — venv/frozen EXE 양쪽에서 use_gpu=True 요청 시 CPU 전환 + 결과 파일 정상 생성 확인
 - [x] PyInstaller 빌드(3.5GB), 리소스 스모크·실오디오 분리 스모크 통과
-- [ ] 설치파일 생성 + SHA-256 갱신
+- [x] 설치파일 생성 + SHA-256 갱신 (Windows 1.91GB / macOS DMG 393MB)
 - [ ] **GPU 실검증 보류** — 개발 PC 드라이버 566.36 < CUDA 13 요구치 580이라 로컬에서 CUDA 경로 확인 불가
-- [ ] GitHub Release v2.03 업로드 (macOS DMG는 CI 산출물 첨부 — 없으면 맥 업데이터가 오류)
+- [x] GitHub Release v2.03 정식 업로드 — Windows exe + macOS DMG, 업데이터 digest 검증 완료
 
 ### 드라이버 요구사항 (릴리스 노트에 반드시 포함)
 CUDA 13은 NVIDIA 드라이버 **580 이상**을 요구한다. 카드가 sm_75 이상이어도 드라이버가 낮으면
