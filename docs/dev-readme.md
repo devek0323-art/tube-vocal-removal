@@ -1,6 +1,6 @@
-# Tube Vocal Removal v2.00
+# Tube Vocal Removal v2.03
 
-YouTube 링크 또는 로컬 오디오에서 보컬/반주를 분리하는 Windows 데스크톱 앱입니다. 원본 HTML 목업을 pywebview(WebView2) 창으로 실행하며 별도 웹 서버는 사용하지 않습니다.
+YouTube 링크 또는 로컬 오디오에서 보컬/반주를 분리하는 Windows·macOS 데스크톱 앱입니다. 원본 HTML 목업을 pywebview(WebView2) 창으로 실행하며 별도 웹 서버는 사용하지 않습니다.
 
 ## 실행
 
@@ -10,10 +10,11 @@ YouTube 링크 또는 로컬 오디오에서 보컬/반주를 분리하는 Windo
 dist\Tube Vocal Removal\Tube Vocal Removal.exe
 ```
 
-`_internal` 폴더가 반드시 EXE와 같은 폴더에 있어야 하므로 배포할 때는 `Tube Vocal Removal` 폴더 전체를 전달해야 합니다. 모델은 EXE에 포함하지 않으며 처음 사용하거나 설정에서 미리 받기를 누르면 `%APPDATA%\TubeVocalRemoval\models`에 저장됩니다.
+`runtime` 폴더가 반드시 EXE와 같은 폴더에 있어야 하므로 배포할 때는 `Tube Vocal Removal` 폴더 전체를 전달해야 합니다. 모델은 EXE에 포함하지 않으며 처음 사용하거나 설정에서 미리 받기를 누르면 `%APPDATA%\TubeVocalRemoval\models`에 저장됩니다.
 
 - 기본 연산 장치: CPU
-- GPU: 설정에서 사용자가 직접 켠 경우에만 사용
+- GPU: 설정에서 사용자가 직접 켠 경우에만 사용. Windows는 CUDA 13 빌드라 Turing(sm_75) 이상 + NVIDIA 드라이버 580 이상이 필요하고, macOS는 Apple Silicon MPS/CoreML을 쓴다
+- 지원하지 않는 GPU는 워커가 커널을 1회 시험 실행해 걸러내고 CPU로 폴백한다
 - 기본 추천: 코러스 유지 Karaoke 모델
 - 빠른 처리, 최고 품질 3모델, 전체 보컬 제거, 보컬 추출, Demucs 4트랙 지원
 - 저장 파일은 분리 방식에 따라 자동 결정됩니다: 반주 계열 1개, 보컬 추출 1개, 악기별 분리 4개
@@ -51,5 +52,7 @@ dist\Tube Vocal Removal\Tube Vocal Removal.exe
 - 자식 FFmpeg/다운로드 프로세스의 CMD 창을 숨깁니다.
 - 설정에서 개별 모델 또는 중복을 제외한 전체 모델을 미리 받을 수 있습니다.
 - 전체 창에는 스크롤을 만들지 않고 대기열과 로그만 내부 스크롤합니다.
+- 곡별 키 이동(-6~+6)과 가사 저장을 지원하며, 볼륨 보정은 구간 평탄화 후 -14 LUFS로 맞춥니다.
+- GPU를 켜 두어도 해당 그래픽 카드로 연산이 불가능하면 오류 없이 CPU로 이어서 처리합니다.
 
-최종 검증일: 2026-07-15
+최종 검증일: 2026-08-02

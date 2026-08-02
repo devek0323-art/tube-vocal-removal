@@ -203,3 +203,18 @@ Roformer 계열은 UVR5 v5.6 기본 목록에 포함된 UVR 제작 모델이 아
 - `separation_worker._cuda_kernel_runs(torch)` — arch 대조 통과 후 **실제 커널 1회 실행**(`ones*2` → `synchronize()` → `sum().item()`). arch 대조만으로는 false negative 위험이 있어 최종 판정은 실연산으로 (Codex 권고)
 - 커널 실행을 UI 프로세스가 아닌 워커에서만 하는 이유: CUDA 컨텍스트가 생기면 UI 프로세스가 VRAM을 상시 점유함
 - 미지원 GPU에서 **raise 대신 CPU 폴백**으로 변경. `notice` 이벤트를 progress 채널로 보내 파이프라인이 로그에 표시. 결과물이 안 나오는 것보다 느려도 나오는 편이 낫다는 판단
+
+### 릴리스와 저장소 정리 (2026-08-02)
+- v2.03 정식 릴리스. Windows 설치 파일은 로컬 Inno Setup(2.05GB), macOS DMG는 CI 산출물(393MB)을 첨부.
+  업데이터가 쓰는 `releases/latest`가 v2.03을 가리키고 두 자산 모두 GitHub이 sha256 digest를 제공하는 것까지 확인
+- CUDA 13 전환으로 빌드가 3.5GB(이전 대비 +130MB)가 됐다. `torch/lib`만 2.6GB, onnxruntime 289MB로
+  용량의 8할이 GPU 런타임이다. 런타임 분리(첫 실행 시 다운로드)를 하면 설치 파일을 400MB대로 줄이면서
+  드라이버·구형 GPU 문제까지 동시에 해결되지만, PyInstaller 고정 `runtime/` 밖에서 torch를 로드해야 해
+  공수가 커 v2.03에서는 보류했다. torch 휠 크기는 cu130 1.8GB / cu126 2.4GB
+- CI 간헐 실패는 `add_files()`가 띄우는 키 감지 스레드 때문이었다. 테스트가 임시 폴더를 지울 때
+  스레드가 아직 오디오를 읽고 있어 Windows가 삭제를 거부한다. 감지를 끄는 방식은 이미 다른 테스트에 있던 선례를 따랐다
+- 컨트리뷰터에서 Claude를 빼기 위해 과거 커밋 5건의 `Co-Authored-By` 트레일러를 제거했다.
+  모든 커밋의 author는 원래부터 devek0323-art였고, 트레일러만 지우면 되는 상황이었다.
+  `filter-branch --msg-filter`로 master와 태그 6개를 재작성한 뒤 force push. 재작성 전후 `git diff`가
+  비어 있어 파일 내용은 무변경임을 확인했고, 릴리스 6개와 자산도 그대로다.
+  GitHub API의 contributors는 즉시 1명으로 바뀌지만 웹 UI 카드는 캐시라 반영이 늦다

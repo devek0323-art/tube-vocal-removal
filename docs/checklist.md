@@ -87,8 +87,13 @@
 - [x] 폴백 E2E — venv/frozen EXE 양쪽에서 use_gpu=True 요청 시 CPU 전환 + 결과 파일 정상 생성 확인
 - [x] PyInstaller 빌드(3.5GB), 리소스 스모크·실오디오 분리 스모크 통과
 - [x] 설치파일 생성 + SHA-256 갱신 (Windows 1.91GB / macOS DMG 393MB)
-- [ ] **GPU 실검증 보류** — 개발 PC 드라이버 566.36 < CUDA 13 요구치 580이라 로컬에서 CUDA 경로 확인 불가
 - [x] GitHub Release v2.03 정식 업로드 — Windows exe + macOS DMG, 업데이터 digest 검증 완료
+- [x] CI 간헐 실패 수정 — `add_files()`의 키 감지 스레드가 임시 오디오를 잡은 채 테스트가 폴더를 지워
+      Windows에서 `PermissionError(WinError 32)` 발생. 같은 구조 5곳에서 감지를 비활성화
+- [x] 저장소 정리 — 과거 커밋 5건의 `Co-Authored-By` 트레일러 제거(히스토리 재작성, 파일 내용 무변경),
+      백업 브랜치·빌드 산출물·구버전 설치 파일 제거로 약 6GB 확보
+- [ ] **GPU 실검증 보류** — 개발 PC 드라이버 566.36 < CUDA 13 요구치 580이라 로컬에서 CUDA 경로 확인 불가.
+      RTX 50 제보자 확인 필요
 
 ### 드라이버 요구사항 (릴리스 노트에 반드시 포함)
 CUDA 13은 NVIDIA 드라이버 **580 이상**을 요구한다. 카드가 sm_75 이상이어도 드라이버가 낮으면
