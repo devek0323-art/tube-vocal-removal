@@ -270,7 +270,8 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(pipeline.add_urls("bad https://youtu.be/example https://youtu.be/example"), 2)
         self.assertEqual(len(pipeline.items), 2)
         self.assertNotEqual(pipeline.items[0].id, pipeline.items[1].id)
-        with tempfile.TemporaryDirectory() as tmp:
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(pipeline, "_detect_key_async", lambda *_a: None):
             audio = Path(tmp) / "local.wav"
             audio.write_bytes(b"wav")
             self.assertEqual(pipeline.add_files([str(audio), str(audio)]), 1)
@@ -360,7 +361,9 @@ class CoreTests(unittest.TestCase):
             first.write_bytes(b"first")
             second.write_bytes(b"second")
             cfg = dict(config.DEFAULTS, output_dir=str(root / "output"), volume_fix=False, download_lyrics=False)
-            with mock.patch.object(config, "TEMP_DIR", root / "temp"), mock.patch.object(config, "MODELS_DIR", root / "models"):
+            with mock.patch.object(config, "TEMP_DIR", root / "temp"), \
+                    mock.patch.object(config, "MODELS_DIR", root / "models"), \
+                    mock.patch.object(pipeline, "_detect_key_async", lambda *_a: None):
                 pipeline.add_files([str(first)])
                 self.assertTrue(pipeline.start("best", cfg))
                 self.assertTrue(first_started.wait(2))
@@ -393,7 +396,9 @@ class CoreTests(unittest.TestCase):
             source = root / "song.wav"
             source.write_bytes(b"audio")
             cfg = dict(config.DEFAULTS, output_dir=str(root / "output"), output_format="MP3", volume_fix=True, download_lyrics=False)
-            with mock.patch.object(config, "TEMP_DIR", root / "temp"), mock.patch.object(config, "MODELS_DIR", root / "models"):
+            with mock.patch.object(config, "TEMP_DIR", root / "temp"), \
+                    mock.patch.object(config, "MODELS_DIR", root / "models"), \
+                    mock.patch.object(pipeline, "_detect_key_async", lambda *_a: None):
                 pipeline.add_files([str(source)])
                 self.assertTrue(pipeline.start("best", cfg))
                 deadline = time.time() + 5
@@ -437,7 +442,9 @@ class CoreTests(unittest.TestCase):
             source = root / "song.wav"
             source.write_bytes(b"audio")
             cfg = dict(config.DEFAULTS, output_dir=str(root / "output"), download_lyrics=False)
-            with mock.patch.object(config, "TEMP_DIR", root / "temp"), mock.patch.object(config, "MODELS_DIR", root / "models"):
+            with mock.patch.object(config, "TEMP_DIR", root / "temp"), \
+                    mock.patch.object(config, "MODELS_DIR", root / "models"), \
+                    mock.patch.object(pipeline, "_detect_key_async", lambda *_a: None):
                 pipeline.add_files([str(source)])
                 self.assertTrue(pipeline.start("demucs", cfg))
                 deadline = time.time() + 5
@@ -648,7 +655,8 @@ class LyricsAndKeyPipelineTests(unittest.TestCase):
                 cfg = dict(config.DEFAULTS, output_dir=str(root / "output"),
                            output_format="MP3", volume_fix=False, download_lyrics=False)
                 with mock.patch.object(config, "TEMP_DIR", root / "temp"), \
-                        mock.patch.object(config, "MODELS_DIR", root / "models"):
+                        mock.patch.object(config, "MODELS_DIR", root / "models"), \
+                        mock.patch.object(pipeline, "_detect_key_async", lambda *_a: None):
                     pipeline.add_files([str(source)])
                     pipeline.items[0].key_shift = 3   # 곡별 목표 키 +3
                     self.assertTrue(pipeline.start("best", cfg))
