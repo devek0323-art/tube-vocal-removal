@@ -242,3 +242,16 @@ Roformer 계열은 UVR5 v5.6 기본 목록에 포함된 UVR 제작 모델이 아
 - 분리·모델 다운로드 중일 때만 `apply_update()`가 False를 반환하며 버튼으로 되돌린다.
   실행 중인 작업을 죽이지 않기 위한 보호라 남겨뒀다
 - 주의: 업데이트 UI 수정은 항상 한 박자 늦게 체감된다. v2.03 사용자는 v2.04로 올 때 예전 흐름을 쓴다
+
+### 패치 업데이트 (v2.04)
+- 조사 결과 UVR5도 정식 설치가 1.58~1.94GB로 우리(2.00GB)와 비슷하다. **차이는 60MB짜리 패치 설치 파일**을 따로 제공한다는 점
+- CUDA DLL 잘라내기는 실패. cusolverMg/cusolver/cusparse 725MB를 빼고 실행하니
+  `[WinError 127] 지정된 프로시저를 찾을 수 없습니다` — torch가 로딩 시점에 링크해서 실제로 안 써도 없으면 시작 자체가 안 된다
+- 빌드 구성: `Tube Vocal Removal.exe` 55MB + `runtime/app` 2.1MB + `runtime/bin` 196MB + 나머지 4.7GB(파이썬·CUDA).
+  앞의 셋만 담으면 패치가 되고, 릴리스마다 바뀌는 건 사실상 그 셋뿐이다
+- `version.py`의 `RUNTIME_REVISION`(현재 `cu128-1`)이 번들 런타임 식별자다. 의존성이 바뀔 때만 올린다
+- `Api.pick_asset()`이 릴리스 자산 중 `patch-<RUNTIME_REVISION>`이 이름에 든 exe를 우선 고르고, 없으면 `setup`이 든 exe를 받는다.
+  패치 파일명에 `setup`을 넣지 않는 이유는 v2.03 이하 구버전 업데이터가 패치를 집어가지 않게 하기 위함이다
+- `installer/TubeVocalRemoval-patch.iss`가 패치를 만든다. 같은 AppId로 덮어쓰고, `InitializeSetup`에서
+  기존 설치본이 없으면 안내 후 중단한다
+- v2.05부터 실효가 있다. CUDA를 안 건드리는 릴리스면 2GB 대신 패치만 받으면 된다

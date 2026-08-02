@@ -158,6 +158,23 @@ class CoreTests(unittest.TestCase):
         self.assertTrue(api.win_toggle_max())
         window.restore.assert_called_once()
 
+    def test_update_prefers_patch_matching_runtime(self):
+        from app.version import RUNTIME_REVISION
+
+        full = {"name": "Tube-Vocal-Removal-Setup-v2.05.exe"}
+        patch = {"name": f"Tube-Vocal-Removal-Patch-{RUNTIME_REVISION}-v2.05.exe"}
+        stale = {"name": "Tube-Vocal-Removal-Patch-cu999-9-v2.05.exe"}
+        dmg = {"name": "Tube-Vocal-Removal-macOS-arm64.dmg"}
+        with mock.patch("app.api.IS_WINDOWS", True):
+            # 런타임이 같으면 2GB 정식 설치 대신 패치를 받는다.
+            self.assertEqual(Api.pick_asset([dmg, full, patch]), patch)
+            # 다른 런타임용 패치는 무시하고 정식 설치 파일로 넘어간다.
+            self.assertEqual(Api.pick_asset([dmg, full, stale]), full)
+            self.assertEqual(Api.pick_asset([dmg, full]), full)
+            self.assertIsNone(Api.pick_asset([dmg]))
+        with mock.patch("app.api.IS_WINDOWS", False):
+            self.assertEqual(Api.pick_asset([dmg, full, patch]), dmg)
+
     def test_update_version_comparison(self):
         self.assertGreater(Api._version_tuple("v1.02"), Api._version_tuple("1.01"))
         self.assertEqual(Api._version_tuple("v1.1.0"), Api._version_tuple("1.01"))

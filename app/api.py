@@ -13,7 +13,7 @@ import webview
 from app import config
 from app.pipeline import Pipeline
 from app.platform_support import IS_MACOS, IS_WINDOWS, accelerator_info, hidden_process_kwargs, open_path
-from app.version import APP_VERSION, GITHUB_API_VERSION, GITHUB_REPOSITORY
+from app.version import APP_VERSION, GITHUB_API_VERSION, GITHUB_REPOSITORY, RUNTIME_REVISION
 
 
 class Api:
@@ -40,6 +40,21 @@ class Api:
             parts.append(int(digits or 0))
         return tuple((parts + [0, 0, 0])[:3])
 
+    @staticmethod
+    def pick_asset(assets):
+        """받을 설치 파일을 고른다.
+
+        런타임(파이썬·CUDA)이 같은 릴리스라면 그 부분을 뺀 패치 파일을 받는다.
+        2GB를 다시 받지 않아도 되며, 패치가 없으면 정식 설치 파일로 넘어간다.
+        """
+        named = [(item, str(item.get("name", "")).lower()) for item in assets]
+        if not IS_WINDOWS:
+            return next((item for item, name in named if name.endswith(".dmg")), None)
+        patch_tag = f"patch-{RUNTIME_REVISION}".lower()
+        patch = next((item for item, name in named if name.endswith(".exe") and patch_tag in name), None)
+        full = next((item for item, name in named if name.endswith(".exe") and "setup" in name), None)
+        return patch or full
+
     def check_for_updates(self):
         if self._update_busy:
             return False
@@ -62,12 +77,7 @@ class Api:
                 release = json.loads(response.read().decode("utf-8"))
             latest = str(release.get("tag_name", "")).lstrip("v")
             assets = release.get("assets") or []
-            extension = ".exe" if IS_WINDOWS else ".dmg" if IS_MACOS else ""
-            asset = next(
-                (item for item in assets if item.get("name", "").lower().endswith(extension)
-                 and ("setup" in item.get("name", "").lower() if IS_WINDOWS else True)),
-                None,
-            )
+            asset = self.pick_asset(assets)
             if not latest or not asset:
                 raise RuntimeError("최신 릴리즈에 설치파일이 없습니다.")
             if self._version_tuple(latest) <= self._version_tuple(APP_VERSION):

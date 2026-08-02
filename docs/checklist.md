@@ -66,7 +66,8 @@
 
 ### 남음
 - [ ] 빌드된 앱에서 키 변경 수동 확인 1회 (frozen python_stretch 실행 경로)
-- [ ] 검토: CPU/GPU 런타임 분리(설치 용량·시간 축소), Microsoft Store MSIX 배포
+- [x] 업데이트 용량 축소 — 패치 설치 파일 도입 (v2.04). CPU/GPU 런타임 분리와 MSIX는 계속 검토
+- [ ] 검토: Microsoft Store MSIX 배포
 - [ ] 실제 Apple Silicon Mac에서 최초 실행·모델 다운로드·전체 분리 E2E 검증
 
 ### 폐기 결정
