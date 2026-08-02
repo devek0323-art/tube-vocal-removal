@@ -255,3 +255,16 @@ Roformer 계열은 UVR5 v5.6 기본 목록에 포함된 UVR 제작 모델이 아
 - `installer/TubeVocalRemoval-patch.iss`가 패치를 만든다. 같은 AppId로 덮어쓰고, `InitializeSetup`에서
   기존 설치본이 없으면 안내 후 중단한다
 - v2.05부터 실효가 있다. CUDA를 안 건드리는 릴리스면 2GB 대신 패치만 받으면 된다
+
+### 패치 빌드 통합 (v2.04)
+- 처음엔 `TubeVocalRemoval-patch.iss`를 따로 뒀는데 버전 번호가 양쪽에 중복돼 어긋날 위험이 있었다.
+  `TubeVocalRemoval.iss` 하나로 합치고 `#ifdef PATCH`로 분기한다
+  - 정식: `ISCC TubeVocalRemoval.iss`
+  - 패치: `ISCC /DPATCH TubeVocalRemoval.iss`
+  - Git Bash에서는 `/DPATCH`가 경로로 변환되므로 `MSYS_NO_PATHCONV=1`을 앞에 붙여야 한다
+- 통합 전후 패치 바이너리가 SHA-256까지 동일함을 확인했다
+- 버전·런타임 값이 `version.py`와 `.iss`에 각각 있어 어긋날 수 있다.
+  `test_installer_script_matches_app_version`이 이를 잡는다 (일부러 어긋뜨려 실패하는 것까지 확인)
+- 정식 설치 파일에서 패치를 자동으로 뽑아낼 수는 없다. `SolidCompression`이라 부분 추출이 불가능하고,
+  사용자 PC에는 이전 설치 파일이 없어 바이너리 델타도 계산할 수 없다. 자체 업데이터를 만들지 않는 한
+  정식·패치 두 벌을 만드는 것이 표준 방식이다 (UVR5도 동일). 패치 빌드는 30초라 부담이 없다

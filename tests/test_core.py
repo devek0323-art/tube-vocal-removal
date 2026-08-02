@@ -158,6 +158,15 @@ class CoreTests(unittest.TestCase):
         self.assertTrue(api.win_toggle_max())
         window.restore.assert_called_once()
 
+    def test_installer_script_matches_app_version(self):
+        """설치 스크립트의 버전·런타임 값이 version.py와 어긋나면 잘못된 파일명이 나간다."""
+        from app.version import APP_VERSION, RUNTIME_REVISION
+
+        script = Path(__file__).resolve().parent.parent / "installer" / "TubeVocalRemoval.iss"
+        text = script.read_text(encoding="utf-8")
+        self.assertIn(f'#define MyAppVersion "{APP_VERSION}"', text)
+        self.assertIn(f'#define MyRuntimeRevision "{RUNTIME_REVISION}"', text)
+
     def test_update_prefers_patch_matching_runtime(self):
         from app.version import RUNTIME_REVISION
 
