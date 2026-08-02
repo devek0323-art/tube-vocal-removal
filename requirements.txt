@@ -1,9 +1,11 @@
---extra-index-url https://download.pytorch.org/whl/cu130
+# CUDA 12.8 고정 — sm_75~sm_120(RTX 20xx~50)을 담으면서 드라이버는 525 이상만 요구한다.
+# CUDA 13(cu130)은 sm_120을 담지만 드라이버 580을 요구해 기존 사용자가 GPU를 잃는다.
+--extra-index-url https://download.pytorch.org/whl/cu128
 audio-separator[gpu]==0.44.3
-onnxruntime-gpu>=1.27,<2
+onnxruntime-gpu>=1.21,<1.27
 pywebview==6.2.1
 python-stretch==0.3.1
 soundfile==0.14.0
-torch==2.13.0+cu130
+torch==2.11.0+cu128
 imageio-ffmpeg==0.6.0
 pyinstaller==6.16.0

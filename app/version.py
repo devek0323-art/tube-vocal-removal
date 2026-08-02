@@ -1,3 +1,3 @@
-APP_VERSION = "2.03"
+APP_VERSION = "2.04"
 GITHUB_REPOSITORY = "devek0323-art/tube-vocal-removal"
 GITHUB_API_VERSION = "2022-11-28"

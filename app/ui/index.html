@@ -531,7 +531,7 @@
   <div class="tb-left">
     <span class="tb-title">Tube Vocal Removal</span>
   </div>
-  <span class="studio-mark" id="studioMark">v2.03</span>
+  <span class="studio-mark" id="studioMark">v2.04</span>
   <button class="cap-btn" id="minBtn" title="최소화" aria-label="최소화">─</button>
   <button class="cap-btn" id="maxBtn" title="최대화" aria-label="최대화">▢</button>
   <button class="cap-btn close" id="closeBtn" title="닫기" aria-label="닫기">✕</button>
@@ -674,7 +674,7 @@
       <div class="setting-card">
         <div class="setting-title">프로그램 업데이트</div>
         <div class="update-meta">
-          <span class="update-current" id="currentVersion">현재 버전 v2.03</span>
+          <span class="update-current" id="currentVersion">현재 버전 v2.04</span>
           <span class="update-latest" id="latestVersion">최신 버전 확인 전</span>
         </div>
         <button class="mini-btn update-btn" id="updateBtn" type="button">업데이트 확인</button>
@@ -963,9 +963,11 @@
           $("updateStatus").textContent = "현재 최신 버전을 사용 중입니다.";
         } else if (ev.state === "available") {
           updateAction = "download";
-          btn.disabled = false;
-          btn.textContent = `v${ev.latest} 업데이트 받기`;
-          $("updateStatus").textContent = `새 버전이 있습니다 · ${(ev.size / 1024 / 1024 / 1024).toFixed(2)}GB`;
+          btn.disabled = true;
+          btn.textContent = `v${ev.latest} 받는 중`;
+          $("updateStatus").textContent = `새 버전을 받습니다 · ${(ev.size / 1024 / 1024 / 1024).toFixed(2)}GB`;
+          // 확인 한 번이면 설치까지 끝나야 한다. 중간에 다시 누르게 하지 않는다.
+          api().download_update();
         } else if (ev.state === "downloading") {
           updateAction = "download";
           btn.disabled = true;
@@ -974,11 +976,13 @@
           $("updateFill").style.width = "0%";
         } else if (ev.state === "ready") {
           updateAction = "apply";
-          btn.disabled = false;
-          btn.textContent = "업데이트 설치";
+          btn.disabled = true;
+          btn.textContent = "설치 준비 중";
           $("updateTrack").hidden = false;
           $("updateFill").style.width = "100%";
-          $("updateStatus").textContent = "다운로드와 무결성 검사가 끝났습니다. 설치하면 앱이 종료됩니다.";
+          $("updateStatus").textContent = "검사가 끝났습니다. 곧 설치가 시작되고 앱이 다시 시작됩니다.";
+          // 받아놓고 다시 누르게 하지 않는다. 바로 설치로 넘어가되, 실패하면 버튼으로 되돌린다.
+          startInstall();
         } else if (ev.state === "installing") {
           updateAction = "apply";
           btn.disabled = true;
@@ -1180,24 +1184,28 @@
     const started = await api().download_all_models();
     if (!started) toast("다른 작업이 진행 중입니다.");
   });
+  async function startInstall() {
+    const btn = $("updateBtn");
+    btn.disabled = true;
+    btn.textContent = "설치 프로그램 여는 중";
+    $("updateStatus").textContent = "설치를 준비하고 있습니다. 창을 닫지 마세요.";
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    const started = await api().apply_update();
+    if (!started) {
+      // 분리 작업이나 모델 다운로드가 돌고 있으면 설치를 미룬다.
+      btn.disabled = false;
+      btn.textContent = "업데이트 설치";
+      $("updateStatus").textContent = "작업이 끝난 뒤 설치됩니다. 지금 설치하려면 눌러 주세요.";
+    }
+    return started;
+  }
+
   $("updateBtn").addEventListener("click", async () => {
     let started = false;
     if (updateAction === "download") started = await api().download_update();
-    else if (updateAction === "apply") {
-      const btn = $("updateBtn");
-      btn.disabled = true;
-      btn.textContent = "설치 프로그램 여는 중";
-      $("updateStatus").textContent = "설치를 준비하고 있습니다. 창을 닫지 마세요.";
-      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
-      started = await api().apply_update();
-      if (!started) {
-        btn.disabled = false;
-        btn.textContent = "업데이트 설치";
-        $("updateStatus").textContent = "다른 작업을 마친 뒤 다시 설치해 주세요.";
-      }
-    }
+    else if (updateAction === "apply") started = await startInstall();
     else started = await api().check_for_updates();
-    if (!started) toast("업데이트 작업을 시작할 수 없습니다.");
+    if (!started && updateAction !== "apply") toast("업데이트 작업을 시작할 수 없습니다.");
   });
   $("saveModalBtn").addEventListener("click", async () => {
     // 저장 형식·음질·GPU·프로그램은 메인 화면 노브가 담당하므로 현재 값을 그대로 유지합니다.
