@@ -4,6 +4,7 @@ import os
 import signal
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 
@@ -36,6 +37,71 @@ def open_path(path: str | Path) -> None:
         subprocess.Popen(["open", target], start_new_session=True)
     else:
         subprocess.Popen(["xdg-open", target], start_new_session=True)
+
+
+_MACOS_UPDATE_SCRIPT = r"""#!/bin/sh
+# 앱이 종료되기를 기다린 뒤 DMG 안의 새 앱으로 교체하고 다시 실행한다.
+# 어느 단계에서든 실패하면 원래 앱을 되돌리고 DMG를 열어 수동 설치로 넘긴다.
+DMG="$1"; APP="$2"; PID="$3"
+NAME=$(basename "$APP")
+MNT="/tmp/tvr-mnt-$$"
+STAGE="/tmp/tvr-stage-$$"
+
+i=0
+while kill -0 "$PID" 2>/dev/null && [ $i -lt 60 ]; do sleep 0.5; i=$((i + 1)); done
+
+fail() {
+    hdiutil detach "$MNT" -quiet 2>/dev/null
+    rm -rf "$MNT" "$STAGE"
+    open "$DMG"
+    exit 1
+}
+
+mkdir -p "$MNT" "$STAGE" || fail
+hdiutil attach "$DMG" -nobrowse -quiet -mountpoint "$MNT" || fail
+[ -d "$MNT/$NAME" ] || fail
+# 새 앱을 먼저 확보한다. 이 단계까지는 기존 앱을 건드리지 않는다.
+ditto "$MNT/$NAME" "$STAGE/$NAME" || fail
+hdiutil detach "$MNT" -quiet
+rmdir "$MNT" 2>/dev/null
+
+BACKUP="$APP.old-$$"
+mv "$APP" "$BACKUP" 2>/dev/null
+if ! mv "$STAGE/$NAME" "$APP"; then
+    [ -d "$BACKUP" ] && mv "$BACKUP" "$APP"
+    rm -rf "$STAGE"
+    open "$DMG"
+    exit 1
+fi
+rm -rf "$BACKUP" "$STAGE"
+open "$APP"
+"""
+
+
+def macos_app_path():
+    """실행 중인 .app 번들 경로. 번들로 실행된 것이 아니면 None."""
+    for parent in Path(sys.executable).resolve().parents:
+        if parent.suffix == ".app":
+            return parent
+    return None
+
+
+def macos_replace_app(dmg, app) -> bool:
+    """DMG의 앱으로 교체하고 재실행하는 스크립트를 앱과 분리해 띄운다."""
+    script = Path(tempfile.gettempdir()) / "tube-vocal-removal-update.sh"
+    try:
+        script.write_text(_MACOS_UPDATE_SCRIPT, encoding="utf-8")
+        script.chmod(0o755)
+        subprocess.Popen(
+            ["/bin/sh", str(script), str(dmg), str(app), str(os.getpid())],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            close_fds=True,
+            start_new_session=True,
+        )
+    except OSError:
+        return False
+    return True
 
 
 def cuda_arch_supported(torch) -> bool:

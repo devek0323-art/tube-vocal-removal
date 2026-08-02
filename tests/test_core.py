@@ -246,6 +246,34 @@ class CoreTests(unittest.TestCase):
             states = [event for event in api.poll_events() if event.get("type") == "update_state"]
             self.assertEqual(states[-1]["state"], "installing")
 
+    def test_macos_app_path_finds_bundle(self):
+        from app import platform_support
+
+        bundle = "/Applications/Tube Vocal Removal.app/Contents/MacOS/Tube Vocal Removal"
+        with mock.patch.object(platform_support.sys, "executable", bundle):
+            found = platform_support.macos_app_path()
+        self.assertIsNotNone(found)
+        self.assertEqual(found.name, "Tube Vocal Removal.app")
+        # 번들 밖에서 실행하면(개발 중) 교체 대상이 없으므로 수동 설치로 넘어가야 한다.
+        with mock.patch.object(platform_support.sys, "executable", "/usr/bin/python3"):
+            self.assertIsNone(platform_support.macos_app_path())
+
+    def test_apply_update_replaces_app_bundle_on_macos(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            installer = Path(tmp) / "Tube-Vocal-Removal.dmg"
+            installer.write_bytes(b"dmg")
+            api = Api()
+            api._window = mock.Mock()
+            api._update_installer = installer
+            with mock.patch("app.api.IS_MACOS", True), \
+                    mock.patch("app.api.macos_app_path", return_value=Path("/Applications/T.app")), \
+                    mock.patch("app.api.macos_replace_app", return_value=True) as swap, \
+                    mock.patch("app.api.open_path") as opener:
+                self.assertTrue(api.apply_update())
+            swap.assert_called_once()
+            opener.assert_not_called()
+            api._window.destroy.assert_called_once()
+
     def test_apply_update_opens_dmg_for_manual_install_on_macos(self):
         with tempfile.TemporaryDirectory() as tmp:
             installer = Path(tmp) / "Tube-Vocal-Removal.dmg"

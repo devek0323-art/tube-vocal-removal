@@ -12,7 +12,15 @@ import webview
 
 from app import config
 from app.pipeline import Pipeline
-from app.platform_support import IS_MACOS, IS_WINDOWS, accelerator_info, hidden_process_kwargs, open_path
+from app.platform_support import (
+    IS_MACOS,
+    IS_WINDOWS,
+    accelerator_info,
+    hidden_process_kwargs,
+    macos_app_path,
+    macos_replace_app,
+    open_path,
+)
 from app.version import APP_VERSION, GITHUB_API_VERSION, GITHUB_REPOSITORY, RUNTIME_REVISION
 
 
@@ -154,8 +162,13 @@ class Api:
         self._events.put({"type": "update_state", "state": "installing", "current": APP_VERSION})
         try:
             if IS_MACOS:
-                open_path(installer)
-                self._events.put({"type": "update_state", "state": "manual_install", "current": APP_VERSION})
+                # 앱 번들을 통째로 바꿔야 해서, 앱이 종료된 뒤 교체하는 스크립트를 띄운다.
+                app = macos_app_path()
+                if app is None or not macos_replace_app(Path(installer), app):
+                    open_path(installer)
+                    self._events.put({"type": "update_state", "state": "manual_install", "current": APP_VERSION})
+                    return True
+                self._window.destroy()
                 return True
             install_log = Path(tempfile.gettempdir()) / "TubeVocalRemoval-update-install.log"
             subprocess.Popen(
