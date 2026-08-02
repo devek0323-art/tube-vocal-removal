@@ -24,8 +24,14 @@ dist\Tube Vocal Removal\Tube Vocal Removal.exe
 ```powershell
 .\.venv\Scripts\python.exe -m app.main
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
-.\build.ps1
+.\build.ps1                # 빌드만
+.\build.ps1 -Installer     # 빌드 + 정식 설치 파일 + 업데이트 패치
 ```
+
+배포용 파일은 세 가지입니다. 윈도우 정식 설치 파일(약 2GB), 윈도우 업데이트 패치(약 120MB),
+macOS DMG(약 400MB, GitHub Actions 산출물)입니다. 패치는 실행 파일과 `runtime/app`,
+`runtime/bin`만 담고 파이썬·CUDA 런타임은 뺀 것이라, `requirements.txt`를 고쳤다면
+`app/version.py`의 `RUNTIME_REVISION`을 반드시 올려야 합니다 (안 올리면 테스트가 잡아냅니다).
 
 리소스 점검:
 

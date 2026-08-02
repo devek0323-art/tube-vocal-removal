@@ -64,7 +64,7 @@ Python 3.12를 사용합니다. `bin/`의 FFmpeg, yt-dlp, Deno는 저장소에 �
 # Windows
 python -m pip install -r requirements.txt
 python scripts/prepare_tools.py windows
-pyinstaller TubeVocalRemoval.spec --noconfirm
+.\build.ps1 -Installer   # 테스트 → 빌드 → 정식 설치 파일 + 업데이트 패치
 ```
 
 ```bash

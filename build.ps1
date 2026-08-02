@@ -1,5 +1,6 @@
 param(
-    [switch]$SkipTests
+    [switch]$SkipTests,
+    [switch]$Installer   # 정식 설치 파일과 업데이트 패치를 함께 만든다
 )
 
 $ErrorActionPreference = "Stop"
@@ -20,3 +21,28 @@ if (-not $SkipTests) {
 if ($LASTEXITCODE -ne 0) { throw "PyInstaller 빌드 실패" }
 
 Write-Host "빌드 완료: dist\Tube Vocal Removal\Tube Vocal Removal.exe"
+
+if ($Installer) {
+    $Candidates = @(
+        (Join-Path $env:LOCALAPPDATA "Programs\Inno Setup 6\ISCC.exe"),
+        "C:\Program Files (x86)\Inno Setup 6\ISCC.exe",
+        "C:\Program Files\Inno Setup 6\ISCC.exe"
+    )
+    $Iscc = $Candidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+    if (-not $Iscc) { throw "ISCC.exe를 찾지 못했습니다. Inno Setup 6을 설치하세요." }
+
+    $Script = Join-Path $Root "installer\TubeVocalRemoval.iss"
+
+    # 정식 설치 파일과 패치는 같은 dist를 두 가지로 포장한 것이다. 항상 함께 만든다.
+    & $Iscc $Script
+    if ($LASTEXITCODE -ne 0) { throw "정식 설치 파일 생성 실패" }
+
+    & $Iscc /DPATCH $Script
+    if ($LASTEXITCODE -ne 0) { throw "업데이트 패치 생성 실패" }
+
+    Write-Host ""
+    Write-Host "release 폴더:"
+    Get-ChildItem (Join-Path $Root "release\*.exe") | ForEach-Object {
+        "{0,-46} {1,6:N0} MB" -f $_.Name, ($_.Length / 1MB)
+    }
+}
