@@ -158,6 +158,18 @@ class CoreTests(unittest.TestCase):
         self.assertTrue(api.win_toggle_max())
         window.restore.assert_called_once()
 
+    def test_runtime_revision_tracks_requirements(self):
+        """패키지를 바꾸면 런타임도 바뀐다. RUNTIME_REVISION을 안 올리면 패치가 앱을 망가뜨린다."""
+        from app.version import RUNTIME_REQUIREMENTS_SHA
+
+        requirements = Path(__file__).resolve().parent.parent / "requirements.txt"
+        actual = hashlib.sha256(requirements.read_bytes()).hexdigest()[:12]
+        self.assertEqual(
+            actual, RUNTIME_REQUIREMENTS_SHA,
+            "requirements.txt가 바뀌었습니다. app/version.py의 RUNTIME_REVISION을 올리고 "
+            f"RUNTIME_REQUIREMENTS_SHA를 '{actual}'로 갱신하세요.",
+        )
+
     def test_installer_script_matches_app_version(self):
         """설치 스크립트의 버전·런타임 값이 version.py와 어긋나면 잘못된 파일명이 나간다."""
         from app.version import APP_VERSION, RUNTIME_REVISION

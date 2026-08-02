@@ -279,3 +279,11 @@ Roformer 계열은 UVR5 v5.6 기본 목록에 포함된 UVR 제작 모델이 아
   개발 중(번들 아님)에는 None이라 자동으로 수동 설치 경로를 탄다
 - **실기기 미검증**: 맥이 없어 교체 동작을 직접 확인하지 못했다. `sh -n` 문법 검사와 단위 테스트만 통과한 상태다.
   DMG 마운트·권한(/Applications 쓰기)·재실행은 실제 맥에서 확인이 필요하다
+
+### 패치 안전장치
+- 패치에는 실행 파일·`runtime/app`·`runtime/bin`만 들어간다. 파이썬 패키지는 `runtime` 루트에 있어 빠진다.
+  따라서 **`requirements.txt`가 바뀌면 CUDA가 그대로여도 반드시 `RUNTIME_REVISION`을 올려야 한다.**
+  안 올리면 새 패키지가 빠진 패치가 나가 앱이 실행 중 죽는다
+- `RUNTIME_REQUIREMENTS_SHA`에 `requirements.txt`의 해시를 박아두고
+  `test_runtime_revision_tracks_requirements`가 어긋남을 잡는다. 실패 메시지에 새 해시를 알려준다
+- 같은 방식으로 `.iss`의 버전 어긋남은 `test_installer_script_matches_app_version`이 잡는다
