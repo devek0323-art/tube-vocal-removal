@@ -158,6 +158,28 @@ class CoreTests(unittest.TestCase):
         self.assertTrue(api.win_toggle_max())
         window.restore.assert_called_once()
 
+    def test_title_candidates_reach_real_song_name(self):
+        """업로더가 제목 뒤에 붙인 말을 잘라내 진짜 곡 제목에 도달해야 한다."""
+        from app.lyrics import title_candidates
+
+        # 실제로 가사를 못 찾았던 제목들
+        self.assertIn("목이 멘다", title_candidates("'목이 멘다' ｜ Kim Do-Hyang"))
+        self.assertIn("목이 멘다", title_candidates("목이 멘다 2005 - 나의 애청곡 No.2"))
+        self.assertIn("이제 나만 믿어요", title_candidates("이제 나만 믿어요 full.ver"))
+        self.assertIn("가로수 그늘 아래 서면", title_candidates("가로수 그늘 아래 서면 2018 LEE MOON SAE @ KSPO"))
+        # 멀쩡한 제목은 건드리지 않는다
+        self.assertEqual(title_candidates("벚꽃 엔딩"), ["벚꽃 엔딩"])
+        # 너무 짧게 잘라 엉뚱한 곡이 걸리지 않도록 한 글자짜리는 만들지 않는다
+        self.assertTrue(all(len(c) >= 2 for c in title_candidates("A - B - C")))
+
+    def test_local_file_search_title_drops_extension(self):
+        """로컬 파일은 확장자가 붙은 채로 검색되어 가사를 못 찾고 있었다."""
+        song = Item("file", r"D:\music\벚꽃 엔딩.mp3", "벚꽃 엔딩.mp3")
+        self.assertEqual(Pipeline._search_title(song), "벚꽃 엔딩")
+        # 유튜브 제목은 확장자가 없으므로 그대로 쓴다
+        link = Item("url", "https://youtu.be/x", "버스커 버스커 - 벚꽃 엔딩")
+        self.assertEqual(Pipeline._search_title(link), "버스커 버스커 - 벚꽃 엔딩")
+
     def test_runtime_revision_tracks_requirements(self):
         """패키지를 바꾸면 런타임도 바뀐다. RUNTIME_REVISION을 안 올리면 패치가 앱을 망가뜨린다."""
         from app.version import RUNTIME_REQUIREMENTS_SHA

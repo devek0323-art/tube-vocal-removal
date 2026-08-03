@@ -5,7 +5,7 @@ import unicodedata
 import urllib.parse
 import urllib.request
 
-UA = "Tube-Vocal-Removal/2.04 (lyrics)"
+UA = "Tube-Vocal-Removal/2.05 (lyrics)"
 _BROWSER_UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                "(KHTML, like Gecko) Chrome/120.0 Safari/537.36")
 LRCLIB_BASE = "https://lrclib.net/api"
@@ -20,6 +20,20 @@ _NOISE = re.compile(
 )
 _BRACKETS = re.compile(r"[\[\(（【][^\]\)）】]*[\]\)）】]")
 _SEPARATORS = (" - ", " – ", " — ", " _ ", "_")
+
+# 제목 뒤에 붙는 채널명·영문 병기·시리즈명·공연장을 자르는 지점
+_CUTS = (" - ", " – ", " — ", "｜", "|", " / ", "／", "～", "~", " @ ", "@")
+# 곡 제목 끝에 붙는 부가 정보 낱말 (연도, No.2, full.ver 등)
+_META_WORD = re.compile(
+    r"^(19|20)\d{2}년?$"
+    r"|^(no|vol|pt|part|ver|version|disc|track)\d*$"
+    r"|^(full|official|live|inst|mr|audio|video|mv|lyric|lyrics|가사|반주|음원|자막)$"
+    r"|^\d{1,3}$",
+    re.I,
+)
+_YEAR = re.compile(r"^(19|20)\d{2}년?$")
+_QUOTES = "'\"‘’“”「」『』《》"
+_TRIM = " -–—_·|｜~,." + _QUOTES
 
 
 def clean_title(raw: str) -> str:
@@ -38,6 +52,50 @@ def split_artist_title(cleaned: str):
             artist, title = cleaned.split(sep, 1)
             return artist.strip(), title.strip()
     return None, cleaned.strip()
+
+
+def _is_meta(token: str) -> bool:
+    """'full.ver', 'No.2'처럼 점으로 이어진 것도 부가 정보로 본다."""
+    parts = [p for p in re.split(r"[.\s]+", token.strip(_TRIM)) if p]
+    return bool(parts) and all(_META_WORD.match(p) for p in parts)
+
+
+def title_candidates(title: str, limit: int = 4):
+    """검색어 후보를 긴 것부터 짧은 것 순으로 만든다.
+
+    업로더가 제목 뒤에 붙이는 말은 형태가 제각각이라 정규식 하나로 잡기 어렵다.
+    대신 뒤에서부터 잘라낸 후보를 차례로 시도해 진짜 곡 제목에 도달한다.
+    """
+    found = []
+
+    def add(text):
+        text = re.sub(f"[{re.escape(_QUOTES)}]", " ", text)
+        text = re.sub(r"\s+", " ", text).strip(_TRIM)
+        if len(text) >= 2 and text not in found:
+            found.append(text)
+
+    add(title)
+    if not found:
+        return []
+    base = found[0]
+    # 구분자 앞부분만 남긴다
+    for cut in _CUTS:
+        if cut in base:
+            add(base.split(cut)[0])
+    # 연도가 중간에 있으면 그 앞까지만 남긴다
+    for candidate in list(found):
+        tokens = candidate.split()
+        for index, token in enumerate(tokens):
+            if index > 0 and _YEAR.match(token.strip(_TRIM)):
+                add(" ".join(tokens[:index]))
+                break
+    # 뒤에서부터 부가 정보 토큰을 떼어낸다
+    for candidate in list(found):
+        tokens = candidate.split()
+        while len(tokens) > 1 and _is_meta(tokens[-1]):
+            tokens.pop()
+            add(" ".join(tokens))
+    return found[:limit]
 
 
 def _norm(text: str) -> str:
@@ -175,12 +233,20 @@ def _fetch_kr(artist, title):
 
 
 def fetch_lyrics(title, duration=None, artist=None):
-    """제목(+길이)으로 가사를 조회한다. 정제된 제목/가수를 우선 쓰고, 못 찾으면 None."""
+    """제목(+길이·가수)으로 가사를 조회한다. 못 찾으면 None.
+
+    제목 뒤 군더더기를 잘라낸 후보를 차례로 시도한다. 가수를 붙인 검색이 먼저지만,
+    제목에서 가수를 잘못 뽑았을 수 있으므로 가수 없이도 한 번 더 시도한다.
+    """
     cleaned = clean_title(title)
     parsed_artist, parsed_title = split_artist_title(cleaned)
     artist = artist or parsed_artist
-    title = parsed_title or cleaned
-    return _fetch_lrclib(artist, title, duration) or _fetch_kr(artist, title)
+    for candidate in title_candidates(parsed_title or cleaned):
+        for name in ([artist, None] if artist else [None]):
+            found = _fetch_lrclib(name, candidate, duration) or _fetch_kr(name, candidate)
+            if found:
+                return found
+    return None
 
 
 def save_lyrics(result, destination):

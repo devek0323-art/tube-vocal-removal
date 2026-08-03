@@ -487,7 +487,7 @@ class Pipeline:
             shutil.rmtree(song_dir, ignore_errors=True)
             raise RuntimeError("분리 결과 파일이 생성되지 않았습니다.")
         if cfg.get("download_lyrics", True) and getattr(item, "want_lyrics", True):
-            self._save_lyrics(item, song_dir)
+            self._save_lyrics(item, song_dir, src)
         if item.kind == "url" and cfg.get("keep_source", False):
             shutil.copy2(src, song_dir / sanitize_name(src.name))
         self.emit({"type": "progress", "id": item.id, "stage": "완료", "pct": 100})
@@ -709,11 +709,29 @@ class Pipeline:
         if result.returncode != 0 or not destination.is_file():
             raise RuntimeError("키 이동 인코딩에 실패했습니다.")
 
-    def _save_lyrics(self, item: Item, song_dir: Path):
+    @staticmethod
+    def _search_title(item: Item) -> str:
+        """가사 검색어. 로컬 파일은 확장자를 뗀다 — `.mp3`가 붙으면 검색이 실패한다."""
+        if item.kind == "file":
+            return Path(item.title).stem or item.title
+        return item.title
+
+    @staticmethod
+    def _audio_duration(path) -> float | None:
+        """가사 오매칭을 막는 길이 검증에 쓸 재생시간(초)."""
+        try:
+            import soundfile
+            info = soundfile.info(str(path))
+            return info.frames / info.samplerate if info.samplerate else None
+        except Exception:
+            return None
+
+    def _save_lyrics(self, item: Item, song_dir: Path, source=None):
         """가사를 조회해 곡 폴더에 .txt로 저장한다. 실패는 조용히 넘긴다(부가 기능)."""
         try:
             from app import lyrics
-            result = lyrics.fetch_lyrics(item.title)
+            duration = self._audio_duration(source) if source else None
+            result = lyrics.fetch_lyrics(self._search_title(item), duration=duration)
             if result:
                 lyrics.save_lyrics(result, song_dir / f"{sanitize_name(item.title)} (가사).txt")
                 self._log(f"가사 저장: {item.title}")

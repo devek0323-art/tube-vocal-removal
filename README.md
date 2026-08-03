@@ -1,4 +1,4 @@
-# Tube Vocal Removal v2.04
+# Tube Vocal Removal v2.05
 
 유튜브 링크나 오디오 파일에서 **보컬과 반주를 AI로 분리**하는 데스크톱 프로그램입니다.
 개인 보컬 연습 용도로 만들어졌습니다.
@@ -7,14 +7,14 @@
 
 | 운영체제 | 다운로드 | 지원 환경 | GPU 가속 |
 |---|---|---|---|
-| Windows | [Tube-Vocal-Removal-Setup-v2.04.exe](https://github.com/devek0323-art/tube-vocal-removal/releases/download/v2.04/Tube-Vocal-Removal-Setup-v2.04.exe) | Windows 10/11 64비트 | NVIDIA CUDA 또는 CPU |
-| macOS | [Tube-Vocal-Removal-macOS-arm64.dmg](https://github.com/devek0323-art/tube-vocal-removal/releases/download/v2.04/Tube-Vocal-Removal-macOS-arm64.dmg) | macOS 14 이상, Apple Silicon(M1 이상) | Apple MPS/CoreML 또는 CPU |
+| Windows | [Tube-Vocal-Removal-Setup-v2.05.exe](https://github.com/devek0323-art/tube-vocal-removal/releases/download/v2.05/Tube-Vocal-Removal-Setup-v2.05.exe) | Windows 10/11 64비트 | NVIDIA CUDA 또는 CPU |
+| macOS | [Tube-Vocal-Removal-macOS-arm64.dmg](https://github.com/devek0323-art/tube-vocal-removal/releases/download/v2.05/Tube-Vocal-Removal-macOS-arm64.dmg) | macOS 14 이상, Apple Silicon(M1 이상) | Apple MPS/CoreML 또는 CPU |
 
 파일 무결성 확인용 SHA-256:
 
-- Windows (정식): `4D162A1FA015999E1EE44449E0CBA4019351351491DE3FE6874DB449BAACFB40`
-- Windows (업데이트 패치): `AAF474998B26F09565769BB9D9B6E16E6B9D25FE54BF7A2038A8B0D23B7D8AC9`
-- macOS: `F5BC9F830A499952D3D8F56F21BEACB492E1ED3B3139040B7DBD899339C6C7CA`
+- Windows (정식): `WIN_SHA`
+- Windows (업데이트 패치): `PATCH_SHA`
+- macOS: `MAC_SHA`
 
 - AI 모델은 첫 사용 시 자동으로 다운로드됩니다 (인터넷 연결 필요)
 - 기본은 CPU로 동작하며, 지원 GPU가 감지되면 설정에서 가속을 켤 수 있습니다
@@ -76,6 +76,12 @@ pyinstaller TubeVocalRemoval-mac.spec --noconfirm
 ```
 
 두 플랫폼의 전체 패키징 절차는 `.github/workflows/build.yml`에 정의되어 있습니다.
+
+### v2.05 변경
+
+- **가사를 더 잘 찾습니다** — 유튜브 제목 뒤에 붙은 채널명·영문 병기·연도·시리즈명(`｜ Kim Do-Hyang`, `2005 - 나의 애청곡 No.2`, `full.ver` 등)을 걷어내고 검색합니다. 실패하던 곡들이 정상적으로 가사를 받습니다
+- **로컬 파일 가사 수정** — 파일을 드래그해 넣으면 `.mp3` 확장자가 검색어에 섞여 가사를 거의 못 찾던 문제를 고쳤습니다
+- **잘못된 가사 방지** — 곡 길이를 대조해 제목만 비슷한 다른 곡의 가사가 붙지 않도록 했습니다
 
 ### v2.04 변경
 
