@@ -66,7 +66,7 @@ app = BUNDLE(
     bundle_identifier="art.devek0323.tube-vocal-removal",
     info_plist={
         "CFBundleDisplayName": "Tube Vocal Removal",
-        "CFBundleShortVersionString": "2.05",
+        "CFBundleShortVersionString": "2.06",
         "CFBundleVersion": "2.0.2",
         "LSMinimumSystemVersion": "14.0",
         "NSHighResolutionCapable": True,

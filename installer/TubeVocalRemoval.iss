@@ -4,7 +4,7 @@
 ; 패치는 런타임(파이썬·CUDA)을 빼고 릴리스마다 바뀌는 것만 담는다.
 ; RuntimeRevision은 app/version.py의 RUNTIME_REVISION과 반드시 같아야 한다.
 #define MyAppName "Tube Vocal Removal"
-#define MyAppVersion "2.05"
+#define MyAppVersion "2.06"
 #define MyRuntimeRevision "cu128-1"
 #define MyAppPublisher "Tube Vocal Removal"
 #define MyAppExeName "Tube Vocal Removal.exe"
