@@ -184,8 +184,10 @@ class CoreTests(unittest.TestCase):
         """패키지를 바꾸면 런타임도 바뀐다. RUNTIME_REVISION을 안 올리면 패치가 앱을 망가뜨린다."""
         from app.version import RUNTIME_REQUIREMENTS_SHA
 
+        # 줄바꿈이 정규화되도록 텍스트로 읽는다. 바이트로 읽으면 CRLF 체크아웃에서 값이 달라진다.
         requirements = Path(__file__).resolve().parent.parent / "requirements.txt"
-        actual = hashlib.sha256(requirements.read_bytes()).hexdigest()[:12]
+        text = requirements.read_text(encoding="utf-8")
+        actual = hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
         self.assertEqual(
             actual, RUNTIME_REQUIREMENTS_SHA,
             "requirements.txt가 바뀌었습니다. app/version.py의 RUNTIME_REVISION을 올리고 "

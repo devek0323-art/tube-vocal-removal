@@ -1,4 +1,4 @@
-param(
+﻿param(
     [switch]$SkipTests,
     [switch]$Installer   # 정식 설치 파일과 업데이트 패치를 함께 만든다
 )
