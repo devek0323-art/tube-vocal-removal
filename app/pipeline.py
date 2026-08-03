@@ -33,6 +33,33 @@ MODE_MODELS = {
 # `vocals`와 `best`는 같은 모델을 공유하므로 전체 받기에서는 한 번만 처리한다.
 ALL_MODEL_MODES = ("karaoke", "karaoke_ensemble", "best", "karaoke_fast", "demucs")
 
+# audio-separator 0.44.3이 각 선택지에 요구하는 캐시 파일이다. 모델 본체뿐 아니라
+# 설정 파일과 Demucs 가중치까지 있어야 설치 완료로 본다.
+MODEL_REQUIRED_FILES = {
+    "karaoke": (
+        "mel_band_roformer_karaoke_gabox.ckpt",
+        "config_mel_band_roformer_karaoke_gabox.yaml",
+    ),
+    "karaoke_ensemble": (
+        "mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956.ckpt",
+        "mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956_config.yaml",
+        "mel_band_roformer_karaoke_gabox_v2.ckpt",
+        "config_mel_band_roformer_karaoke_gabox.yaml",
+        "mel_band_roformer_karaoke_becruily.ckpt",
+        "config_mel_band_roformer_karaoke_becruily.yaml",
+    ),
+    "best": (
+        "model_bs_roformer_ep_317_sdr_12.9755.ckpt",
+        "model_bs_roformer_ep_317_sdr_12.9755.yaml",
+    ),
+    "vocals": (
+        "model_bs_roformer_ep_317_sdr_12.9755.ckpt",
+        "model_bs_roformer_ep_317_sdr_12.9755.yaml",
+    ),
+    "karaoke_fast": ("UVR_MDXNET_KARA_2.onnx",),
+    "demucs": ("htdemucs.yaml", "955717e8-8726e21a.th"),
+}
+
 # 볼륨 보정 1단계 — 곡 안의 출렁임을 구간 단위로 평탄화 (최대 6배 증폭 제한)
 VOLUME_FLATTEN_FILTER = "dynaudnorm=f=1000:g=31:m=6:p=0.9,alimiter=limit=0.95"
 # 볼륨 보정 2단계 — 최종 음량을 유튜브/스포티파이 기준으로 고정
@@ -601,6 +628,11 @@ class Pipeline:
         if mode not in MODE_MODELS:
             return False
         self._cancel.clear()
+        if self._model_group_installed(mode):
+            self._log("AI 모델이 이미 설치되어 있어 다운로드를 건너뜁니다.", True)
+            self.emit({"type": "model_download_state", "running": False, "mode": mode,
+                       "ok": True, "already_installed": True})
+            return True
         self.model_downloading = True
         threading.Thread(target=self._download_model_worker, args=(mode, dict(cfg)), daemon=True).start()
         return True
@@ -609,6 +641,11 @@ class Pipeline:
         if self.running or self.model_downloading:
             return False
         self._cancel.clear()
+        if all(self._model_group_installed(mode) for mode in ALL_MODEL_MODES):
+            self._log("전체 AI 모델이 이미 설치되어 있어 다운로드를 건너뜁니다.", True)
+            self.emit({"type": "model_download_state", "running": False, "mode": "all",
+                       "ok": True, "already_installed": True})
+            return True
         self.model_downloading = True
         threading.Thread(target=self._download_all_models_worker, args=(dict(cfg),), daemon=True).start()
         return True
@@ -643,6 +680,9 @@ class Pipeline:
             self.model_downloading = False
 
     def _download_one_model_group(self, mode: str):
+        if self._model_group_installed(mode):
+            self._log(f"이미 설치된 AI 모델 건너뜀: {mode}", True)
+            return
         work_dir = config.TEMP_DIR / "model-download" / mode
         work_dir.mkdir(parents=True, exist_ok=True)
         request_path = work_dir / "worker-request.json"
@@ -658,6 +698,22 @@ class Pipeline:
             "response_path": str(response_path.resolve()),
         }
         self._run_worker_request(request, request_path, response_path)
+
+    @staticmethod
+    def _model_group_installed(mode: str) -> bool:
+        required = MODEL_REQUIRED_FILES.get(mode)
+        if not required:
+            return False
+        return all((config.MODELS_DIR / filename).is_file()
+                   and (config.MODELS_DIR / filename).stat().st_size > 0
+                   for filename in required)
+
+    def model_download_status(self) -> dict:
+        installed = {mode: self._model_group_installed(mode) for mode in MODE_MODELS}
+        return {
+            "installed": installed,
+            "all_installed": all(installed.get(mode, False) for mode in ALL_MODEL_MODES),
+        }
 
     def _normalize_and_encode(self, source: Path, destination: Path, cfg: dict):
         """구간 평탄화 후 -14 LUFS로 맞춰 최종 형식으로 1회 인코딩한다."""

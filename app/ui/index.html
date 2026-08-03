@@ -931,9 +931,10 @@
             ? `전체 모델 받는 중 (${ev.index}/${ev.total})`
             : "모델 정보 확인 중";
         } else if (ev.ok) {
-          $("modelDownloadStatus").textContent = ev.mode === "all"
-            ? "전체 모델 다운로드 완료"
-            : "다운로드 완료 · 이 모델은 바로 사용할 수 있습니다.";
+          $("modelDownloadStatus").textContent = ev.already_installed
+            ? "이미 설치된 모델입니다 · 다시 받지 않았습니다."
+            : (ev.mode === "all" ? "전체 모델 다운로드 완료" : "다운로드 완료 · 이 모델은 바로 사용할 수 있습니다.");
+          refreshModelDownloadStatus();
         } else {
           $("modelDownloadStatus").textContent = "다운로드 실패 · 진행 상황 로그를 확인하세요.";
         }
@@ -1161,10 +1162,29 @@
     updateEngineControls();
   }
 
+  let modelInstallStatus = { installed: {}, all_installed: false };
+  function showModelDownloadStatus() {
+    const mode = $("modelDownloadSelect").value;
+    const installed = Boolean(modelInstallStatus.installed && modelInstallStatus.installed[mode]);
+    $("downloadModelBtn").disabled = installed;
+    $("downloadModelBtn").textContent = installed ? "설치됨" : "미리 받기";
+    $("downloadAllModelsBtn").disabled = Boolean(modelInstallStatus.all_installed);
+    $("downloadAllModelsBtn").textContent = modelInstallStatus.all_installed ? "모두 설치됨" : "전체 모델";
+    $("modelDownloadStatus").textContent = installed
+      ? "이 모델은 이미 설치되어 있습니다 · 다시 다운로드하지 않습니다."
+      : "미리 받아두면 첫 변환이 즉시 시작됩니다.";
+  }
+  async function refreshModelDownloadStatus() {
+    if (!apiReady) return;
+    modelInstallStatus = await api().get_model_download_status();
+    showModelDownloadStatus();
+  }
+
   $("settingsBtn").addEventListener("click", async () => {
     if (!apiReady) return;
     fillSettings(await api().get_settings());
     $("currentVersion").textContent = `현재 버전 v${await api().get_app_version()}`;
+    await refreshModelDownloadStatus();
     overlay.classList.add("open");
   });
   function closeModal() { overlay.classList.remove("open"); }
@@ -1180,6 +1200,7 @@
     const started = await api().download_model($("modelDownloadSelect").value);
     if (!started) toast("다른 작업이 진행 중입니다.");
   });
+  $("modelDownloadSelect").addEventListener("change", showModelDownloadStatus);
   $("downloadAllModelsBtn").addEventListener("click", async () => {
     const started = await api().download_all_models();
     if (!started) toast("다른 작업이 진행 중입니다.");

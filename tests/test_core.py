@@ -108,7 +108,8 @@ class CoreTests(unittest.TestCase):
         pipeline = Pipeline(lambda _event: None)
         pipeline._cancel.set()
         fake_thread = mock.Mock()
-        with mock.patch("app.pipeline.threading.Thread", return_value=fake_thread):
+        with mock.patch.object(pipeline, "_model_group_installed", return_value=False), \
+                mock.patch("app.pipeline.threading.Thread", return_value=fake_thread):
             self.assertTrue(pipeline.download_model("karaoke", dict(config.DEFAULTS)))
         self.assertFalse(pipeline._cancel.is_set())
         fake_thread.start.assert_called_once()

@@ -240,6 +240,9 @@ class Api:
     def download_all_models(self):
         return self._pipeline.download_all_models(self._cfg)
 
+    def get_model_download_status(self):
+        return self._pipeline.model_download_status()
+
     def open_folder(self, path):
         target = path or self._cfg["output_dir"]
         if os.path.isdir(target):
