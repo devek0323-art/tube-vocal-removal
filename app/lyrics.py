@@ -113,6 +113,24 @@ def _similar(a: str, b: str) -> bool:
     return len(short) >= 2 and short in long
 
 
+def _same_title(a: str, b: str) -> bool:
+    """제목만으로 검색할 때 다른 곡의 부분 일치를 막는다."""
+    return bool(_norm(a)) and _norm(a) == _norm(b)
+
+
+def _lyrics_support_short_english_title(title: str, text: str) -> bool:
+    """가수 정보가 없는 짧은 영문 제목은 가사 본문으로 한 번 더 검증한다.
+
+    ``Drowning`` 검색이 아티스트 ``Drowning Pool``의 ``Bodies``로 튀는 것처럼
+    검색 엔진이 제목과 가수명을 섞는 경우를 차단한다. 여러 단어/한글 제목은
+    제목이 가사에 그대로 나오지 않는 곡이 많으므로 이 보수적 검사를 적용하지 않는다.
+    """
+    title = unicodedata.normalize("NFC", str(title)).strip()
+    if not re.fullmatch(r"[A-Za-z][A-Za-z'-]{3,}", title):
+        return True
+    return re.search(rf"(?i)(?<![A-Za-z]){re.escape(title)}(?![A-Za-z])", text or "") is not None
+
+
 def _http_get(url: str) -> bytes:
     """단순 GET — 테스트에서 이 함수를 대체(monkeypatch)한다."""
     ua = _BROWSER_UA if "bugs.co.kr" in url else UA
@@ -172,7 +190,8 @@ def _lrclib_pick(rows, artist, title, duration, strict):
         if not isinstance(row, dict):
             continue
         if strict:
-            if not _similar(title, row.get("trackName", "")):
+            track_name = row.get("trackName", "")
+            if (not _similar(title, track_name) if artist else not _same_title(title, track_name)):
                 continue
             if artist and not _similar(artist, row.get("artistName", "")):
                 continue
@@ -204,7 +223,7 @@ def _fetch_kr(artist, title):
     for track_id in _KR_TRACK_ID.findall(page):
         if track_id not in seen:
             seen.append(track_id)
-        if len(seen) >= 4:
+        if len(seen) >= 10:
             break
 
     for track_id in seen:
@@ -218,7 +237,9 @@ def _fetch_kr(artist, title):
             label = re.sub(r"\s*-\s*[^-/]+$", "", head.group(1)).strip()
             page_title, _, page_artist = label.partition("/")
             page_artist = re.sub(r"\(.*?\)", "", page_artist).strip()
-            if not _similar(title, page_title):
+            # 가수가 확인되지 않은 커버곡 검색에서는 부분 일치를 허용하면
+            # Drowning -> Drowning Shadows 같은 동명이곡을 집을 수 있다.
+            if (not _similar(title, page_title) if artist else not _same_title(title, page_title)):
                 continue
             if artist and page_artist and not _similar(artist, page_artist):
                 continue
@@ -227,8 +248,11 @@ def _fetch_kr(artist, title):
             continue
         text = _html.unescape(body.group(1)).strip()
         lines = [ln.strip() for ln in text.splitlines()]
+        clean_text = "\n".join(lines).strip("\n")
+        if not artist and not _lyrics_support_short_english_title(title, clean_text):
+            continue
         if sum(1 for ln in lines if ln) >= 4:
-            return {"text": "\n".join(lines).strip("\n"), "synced": None, "source": "web"}
+            return {"text": clean_text, "synced": None, "source": "web"}
     return None
 
 
