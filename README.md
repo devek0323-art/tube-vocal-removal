@@ -10,7 +10,11 @@
 | Windows | [Tube-Vocal-Removal-Setup-v2.06.exe](https://github.com/devek0323-art/tube-vocal-removal/releases/download/v2.06/Tube-Vocal-Removal-Setup-v2.06.exe) | Windows 10/11 64비트 | NVIDIA CUDA 또는 CPU |
 | macOS | [Tube-Vocal-Removal-macOS-arm64.dmg](https://github.com/devek0323-art/tube-vocal-removal/releases/download/v2.06/Tube-Vocal-Removal-macOS-arm64.dmg) | macOS 14 이상, Apple Silicon(M1 이상) | Apple MPS/CoreML 또는 CPU |
 
-파일 무결성 확인용 SHA-256은 v2.06 릴리스 파일 생성 후 기록합니다.
+파일 무결성 확인용 SHA-256:
+
+- Windows (정식): `8D787FD7BEE524D77E6741C92A1AB8DB22D86FCC1B5B63BA334EB447E0F28285`
+- Windows (업데이트 패치): `B401BBA2F22A18A7C5DA4FB2EEF5375C5B8EDBA51B5F52122D98B6829B9C6BDD`
+- macOS: `6A342D8977EC9F95DB0C4E08EEB0F58CF3BE6B24B22E1D9811A939387E907A5E`
 
 - AI 모델은 첫 사용 시 자동으로 다운로드됩니다 (인터넷 연결 필요)
 - 기본은 CPU로 동작하며, 지원 GPU가 감지되면 설정에서 가속을 켤 수 있습니다
