@@ -181,12 +181,21 @@ class CoreTests(unittest.TestCase):
         fake_run = SimpleNamespace(returncode=0)
         with tempfile.TemporaryDirectory() as tmp:
             report = Path(tmp) / "smoke.json"
-            with mock.patch.dict(sys.modules, {"torch": fake_torch, "audio_separator": SimpleNamespace()}), \
+            assets = Path(tmp) / "whisper" / "assets"
+            assets.mkdir(parents=True)
+            (assets / "mel_filters.npz").write_bytes(b"mel")
+            fake_whisper = SimpleNamespace(audio=SimpleNamespace(
+                __file__=str(assets.parent / "audio.py")))
+            with mock.patch.dict(sys.modules, {"torch": fake_torch, "whisper": fake_whisper,
+                                               "audio_separator": SimpleNamespace()}), \
                     mock.patch("app.main.subprocess.run", return_value=fake_run):
                 self.assertEqual(smoke_test(str(report)), 0)
             payload = json.loads(report.read_text(encoding="utf-8"))
-        self.assertTrue(payload["ok"])
+        self.assertTrue(payload["ok"], payload.get("error"))
         self.assertFalse(payload["checks"]["cuda"])
+        # P6 리소스가 번들에서 빠지면 여기서 걸려야 한다.
+        self.assertTrue(payload["checks"]["whisper"])
+        self.assertTrue(payload["checks"]["font"])
 
     def test_pasted_link_is_submitted_without_enter(self):
         """링크를 붙여넣으면 Enter 없이 대기열에 담겨야 한다."""

@@ -48,12 +48,20 @@ def smoke_test(report_path: str) -> int:
         )
         checks["ffmpeg"] = ffmpeg.returncode == 0
         checks["audio_separator"] = True
+        # 노래방 영상(P6)이 쓰는 것들. 스펙에서 빠지면 그 OS에서만 조용히 죽는다.
+        import whisper
+
+        from app.cover import FONT
+
+        checks["whisper"] = (Path(whisper.audio.__file__).resolve().parent
+                             / "assets" / "mel_filters.npz").is_file()
+        checks["font"] = FONT.is_file()
         accelerator = accelerator_info()
         checks["accelerator"] = accelerator["available"]
         checks["cuda"] = accelerator["backend"] == "cuda"
         checks["mps"] = accelerator["backend"] == "mps"
         gpu = accelerator["name"]
-        required = ("ui", "yt_dlp", "deno", "ffmpeg", "audio_separator")
+        required = ("ui", "yt_dlp", "deno", "ffmpeg", "audio_separator", "whisper", "font")
         return write_smoke_report(report_path, {"ok": all(checks[name] for name in required), "checks": checks, "gpu": gpu})
     except Exception as exc:
         return write_smoke_report(report_path, {"ok": False, "checks": {}, "error": str(exc)})
