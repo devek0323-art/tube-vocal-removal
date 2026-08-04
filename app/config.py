@@ -24,7 +24,7 @@ DEFAULTS = {
     "mp3_bitrate": "320k",           # MP3일 때만 사용
     "keep_source": False,            # 분리 후 다운로드 원본 보관 여부
     "use_gpu": False,               # 기본 CPU, 선택 시 Windows CUDA 또는 macOS MPS/CoreML 사용
-    "mode": "karaoke",              # 마지막으로 선택한 분리 프로그램 (P1~P6) 복원용
+    "mode": "best",                 # 마지막으로 선택한 분리 프로그램 (P1~P5) 복원용
     "volume_fix": True,             # 구간 평탄화 + -14 LUFS 볼륨 보정 (악기별 분리 제외)
     "download_lyrics": True,         # 분리 시 곡 폴더에 가사(.txt) 함께 저장
     "key_shift": 0,                  # 반주/보컬 키 이동 반음 수 (-6~+6, 0은 원키). 악기별 분리 제외
@@ -56,7 +56,7 @@ def validated(values: dict | None) -> dict:
         result["output_format"] = values["output_format"]
     if values.get("mp3_bitrate") in {"128k", "192k", "256k", "320k"}:
         result["mp3_bitrate"] = values["mp3_bitrate"]
-    if values.get("mode") in {"karaoke_fast", "karaoke", "karaoke_ensemble", "best", "vocals", "demucs"}:
+    if values.get("mode") in {"karaoke_fast", "karaoke", "best", "vocals", "demucs"}:
         result["mode"] = values["mode"]
     for key in ("keep_source", "use_gpu", "volume_fix", "download_lyrics"):
         if key in values and isinstance(values[key], bool):

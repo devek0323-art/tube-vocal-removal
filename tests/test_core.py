@@ -12,7 +12,15 @@ from unittest import mock
 from app import config
 from app.api import Api
 from app.main import dropped_paths, smoke_test
-from app.pipeline import ALL_MODEL_MODES, MODE_MODELS, Item, Pipeline, sanitize_name, unique_dir
+from app.pipeline import (
+    ALL_MODEL_MODES,
+    MODE_MODELS,
+    MODEL_REQUIRED_FILES,
+    Item,
+    Pipeline,
+    sanitize_name,
+    unique_dir,
+)
 from app.platform_support import cuda_arch_supported
 
 
@@ -51,9 +59,16 @@ class CoreTests(unittest.TestCase):
     def test_cpu_is_the_default(self):
         self.assertFalse(config.DEFAULTS["use_gpu"])
 
-    def test_default_karaoke_and_ensemble_models(self):
-        self.assertEqual(MODE_MODELS["karaoke"], "mel_band_roformer_karaoke_gabox.ckpt")
-        self.assertEqual(MODE_MODELS["karaoke_ensemble"], {"preset": "karaoke"})
+    def test_mode_models_are_the_measured_winners(self):
+        """실측으로 고른 모델이다. 바꾸려면 같은 방식으로 다시 재고 나서 바꿀 것."""
+        self.assertEqual(MODE_MODELS["karaoke"], "mel_band_roformer_karaoke_becruily.ckpt")
+        self.assertEqual(MODE_MODELS["best"], "mel_band_roformer_instrumental_becruily.ckpt")
+        self.assertEqual(MODE_MODELS["vocals"], MODE_MODELS["best"])
+        self.assertNotIn("karaoke_ensemble", MODE_MODELS)
+        # 선언한 모델과 미리받기 목록이 어긋나면 첫 변환에서 다시 받게 된다.
+        for mode, model in MODE_MODELS.items():
+            if isinstance(model, str) and model.endswith(".ckpt"):
+                self.assertIn(model, MODEL_REQUIRED_FILES[mode])
 
     def test_download_all_models_uses_each_model_group_once(self):
         events = []
@@ -150,14 +165,22 @@ class CoreTests(unittest.TestCase):
         self.assertTrue(payload["ok"])
         self.assertFalse(payload["checks"]["cuda"])
 
-    def test_maximize_button_toggles_restore(self):
-        window = mock.Mock()
-        api = Api()
-        api._window = window
-        self.assertTrue(api.win_toggle_max())
-        window.maximize.assert_called_once()
-        self.assertTrue(api.win_toggle_max())
-        window.restore.assert_called_once()
+    def test_pasted_link_is_submitted_without_enter(self):
+        """링크를 붙여넣으면 Enter 없이 대기열에 담겨야 한다."""
+        ui_path = Path(__file__).resolve().parent.parent / "app" / "ui" / "index.html"
+        ui = ui_path.read_text(encoding="utf-8")
+        self.assertIn('$("urlInput").addEventListener("paste"', ui)
+        self.assertIn("submitUrls", ui)
+        self.assertNotIn("붙여넣기 후 Enter", ui)   # 안내 문구도 함께 바뀌어야 한다
+
+    def test_window_has_no_maximize_control(self):
+        """레이아웃이 고정 폭 기준이라 최대화를 없앴다. 버튼과 API가 함께 빠져야 한다."""
+        self.assertFalse(hasattr(Api(), "win_toggle_max"))
+        ui_path = Path(__file__).resolve().parent.parent / "app" / "ui" / "index.html"
+        ui = ui_path.read_text(encoding="utf-8")
+        self.assertNotIn("maxBtn", ui)
+        self.assertIn("minBtn", ui)
+        self.assertIn("closeBtn", ui)
 
     def test_title_candidates_reach_real_song_name(self):
         """업로더가 제목 뒤에 붙인 말을 잘라내 진짜 곡 제목에 도달해야 한다."""

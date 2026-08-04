@@ -21,40 +21,32 @@ FFMPEG_DIR = BASE_DIR / "bin"
 FFMPEG = FFMPEG_DIR / tool_name("ffmpeg")
 
 MODE_MODELS = {
-    # gabox 카라오케 — aufr33-viperx보다 반주 SDR이 높아(14.65 → 16.37) 기본 추천으로 사용한다.
-    "karaoke": "mel_band_roformer_karaoke_gabox.ckpt",
-    "karaoke_ensemble": {"preset": "karaoke"},
-    "best": "model_bs_roformer_ep_317_sdr_12.9755.ckpt",
+    # becruily 카라오케 — 3곡 실측에서 gabox v1·v2보다 무보컬 구간 악기 손실이 일관되게 적었다.
+    "karaoke": "mel_band_roformer_karaoke_becruily.ckpt",
+    # becruily 반주 — ep_317(2023)보다 보컬 구간 아티팩트가 적고 35% 빠르다.
+    "best": "mel_band_roformer_instrumental_becruily.ckpt",
     "karaoke_fast": "UVR_MDXNET_KARA_2.onnx",
-    "vocals": "model_bs_roformer_ep_317_sdr_12.9755.ckpt",
+    "vocals": "mel_band_roformer_instrumental_becruily.ckpt",
     "demucs": "htdemucs.yaml",
 }
 
 # `vocals`와 `best`는 같은 모델을 공유하므로 전체 받기에서는 한 번만 처리한다.
-ALL_MODEL_MODES = ("karaoke", "karaoke_ensemble", "best", "karaoke_fast", "demucs")
+ALL_MODEL_MODES = ("karaoke", "best", "karaoke_fast", "demucs")
 
 # audio-separator 0.44.3이 각 선택지에 요구하는 캐시 파일이다. 모델 본체뿐 아니라
 # 설정 파일과 Demucs 가중치까지 있어야 설치 완료로 본다.
 MODEL_REQUIRED_FILES = {
     "karaoke": (
-        "mel_band_roformer_karaoke_gabox.ckpt",
-        "config_mel_band_roformer_karaoke_gabox.yaml",
-    ),
-    "karaoke_ensemble": (
-        "mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956.ckpt",
-        "mel_band_roformer_karaoke_aufr33_viperx_sdr_10.1956_config.yaml",
-        "mel_band_roformer_karaoke_gabox_v2.ckpt",
-        "config_mel_band_roformer_karaoke_gabox.yaml",
         "mel_band_roformer_karaoke_becruily.ckpt",
         "config_mel_band_roformer_karaoke_becruily.yaml",
     ),
     "best": (
-        "model_bs_roformer_ep_317_sdr_12.9755.ckpt",
-        "model_bs_roformer_ep_317_sdr_12.9755.yaml",
+        "mel_band_roformer_instrumental_becruily.ckpt",
+        "config_mel_band_roformer_instrumental_becruily.yaml",
     ),
     "vocals": (
-        "model_bs_roformer_ep_317_sdr_12.9755.ckpt",
-        "model_bs_roformer_ep_317_sdr_12.9755.yaml",
+        "mel_band_roformer_instrumental_becruily.ckpt",
+        "config_mel_band_roformer_instrumental_becruily.yaml",
     ),
     "karaoke_fast": ("UVR_MDXNET_KARA_2.onnx",),
     "demucs": ("htdemucs.yaml", "955717e8-8726e21a.th"),

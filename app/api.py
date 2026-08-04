@@ -30,7 +30,6 @@ class Api:
         # private so Window -> Api -> Pipeline -> emit cycles are never walked.
         self._cfg = config.load()
         self._window = None
-        self._maximized = False
         self._events = queue.SimpleQueue()
         self._pipeline = Pipeline(self._events.put)
         self._update_busy = False
@@ -267,17 +266,6 @@ class Api:
 
     def win_minimize(self):
         self._window.minimize()
-
-    def win_toggle_max(self):
-        try:
-            if self._maximized:
-                self._window.restore()
-            else:
-                self._window.maximize()
-            self._maximized = not self._maximized
-        except Exception:
-            return False
-        return True
 
     def win_close(self):
         if self._pipeline.running:

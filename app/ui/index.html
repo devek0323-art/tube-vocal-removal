@@ -443,6 +443,8 @@
     background: linear-gradient(180deg,#2a3320 0%,#212a18 50%,#161d10 100%);
     box-shadow: 0 0 0 #0d0a07, inset 0 2px 5px #000, inset 0 0 10px #4f8f3433; }
   .pkey:focus-visible { outline: 1px solid var(--amber); outline-offset: 1px; }
+  /* 프로그램이 5개라 남는 자리. 눌리는 키가 아니라 마감 패널로 보이게 한다. */
+  .pkey-blank { border: 1px solid #14100c; border-radius: 3px; background: linear-gradient(180deg,#211c17,#191410); box-shadow: inset 0 2px 4px #000; }
   .program-readout { position:relative; height:140px; min-width:0; overflow:hidden; display:grid; grid-template-columns:minmax(0,1fr); align-items:start; padding:12px 11px 9px; border:1px solid #050804; border-radius:4px; background:repeating-linear-gradient(0deg,rgba(137,218,99,.025) 0 1px,transparent 1px 4px),linear-gradient(#071006,#0c170a); box-shadow:inset 0 3px 8px #000,0 1px #514634; }
   .program-readout::after { content:""; pointer-events:none; position:absolute; inset:0; background:radial-gradient(ellipse at 50% 45%,transparent 48%,#02050166 100%); }
   .program-no { display:none; }
@@ -533,7 +535,6 @@
   </div>
   <span class="studio-mark" id="studioMark">v2.06</span>
   <button class="cap-btn" id="minBtn" title="최소화" aria-label="최소화">─</button>
-  <button class="cap-btn" id="maxBtn" title="최대화" aria-label="최대화">▢</button>
   <button class="cap-btn close" id="closeBtn" title="닫기" aria-label="닫기">✕</button>
 </div>
 
@@ -543,7 +544,7 @@
     <div class="panel-body">
       <div class="url-row">
         <input class="hw-input" id="urlInput" type="text"
-               placeholder="Youtube 링크 붙여넣기 후 Enter 또는 파일 드래그 앤 드롭"
+               placeholder="Youtube 링크 붙여넣기 (자동 등록) 또는 파일 드래그 앤 드롭"
                aria-label="유튜브 링크 입력" />
         <button class="hw-btn" id="filePickBtn">파일 선택</button>
       </div>
@@ -561,7 +562,7 @@
           <button class="pkey" type="button" data-index="2" aria-label="P3">P3</button>
           <button class="pkey" type="button" data-index="3" aria-label="P4">P4</button>
           <button class="pkey" type="button" data-index="4" aria-label="P5">P5</button>
-          <button class="pkey" type="button" data-index="5" aria-label="P6">P6</button>
+          <div class="pkey-blank" aria-hidden="true"></div>
         </div>
         <div class="program-readout">
           <span class="program-no" id="programNo">P2</span>
@@ -572,10 +573,9 @@
           </div>
         </div>
         <select id="modeSelect" aria-hidden="true" tabindex="-1" hidden>
+          <option value="best" selected>반주만 · 모든 보컬 제거</option>
+          <option value="karaoke">반주 + 코러스 · 코러스 유지</option>
           <option value="karaoke_fast">반주 + 코러스 · 빠른 처리</option>
-          <option value="karaoke" selected>반주 + 코러스 · 추천</option>
-          <option value="karaoke_ensemble">반주 + 코러스 · 최고 품질</option>
-          <option value="best">반주만 · 모든 보컬 제거</option>
           <option value="vocals">보컬만 추출</option>
           <option value="demucs">악기별 분리 · 4트랙</option>
         </select>
@@ -659,9 +659,8 @@
         <div class="setting-title">AI 모델 미리 받기</div>
         <div class="model-setting">
           <select class="model-screen" id="modelDownloadSelect" aria-label="다운로드할 AI 모델">
-            <option value="karaoke">코러스 유지 · 추천 (약 871MB)</option>
-            <option value="karaoke_ensemble">코러스 유지 · 최고 품질 3모델 (약 3.3GB)</option>
-            <option value="best">모든 보컬 제거 · 최고 품질</option>
+            <option value="best">모든 보컬 제거 · 추천 (약 900MB)</option>
+            <option value="karaoke">코러스 유지 (약 1.7GB)</option>
             <option value="karaoke_fast">코러스 유지 · 빠른 처리</option>
             <option value="demucs">악기별 분리 · Demucs</option>
           </select>
@@ -701,14 +700,13 @@
   let updateAction = "check";
   let gpuAvailable = false;
   let gpuBackend = "cpu";
-  let programIndex = 1;
+  let programIndex = 0;
   let formatIndex = 0;
   let qualityIndex = 3;
   const PROGRAMS = [
-    { value:"karaoke_fast", name:"반주 + 코러스", spec:"FAST · 빠른 처리", description:"가벼운 모델로 메인 보컬을 빠르게 줄입니다. 구형 PC에 적합합니다." },
-    { value:"karaoke", name:"반주 + 코러스", spec:"추천 · 균형 처리", description:"메인 보컬을 자연스럽게 줄이고 코러스와 백킹 보컬은 반주에 남깁니다." },
-    { value:"karaoke_ensemble", name:"반주 + 코러스", spec:"고품질 · 3모델 조합", description:"3개 모델을 조합해 보컬 흔적을 줄이고 반주 손실을 최소화합니다." },
-    { value:"best", name:"모든 보컬 제거", spec:"CLEAN · 전체 보컬 제거", description:"리드 보컬과 코러스까지 강하게 제거해 깨끗한 반주를 만듭니다." },
+    { value:"best", name:"모든 보컬 제거", spec:"추천 · 전체 보컬 제거", description:"리드 보컬과 코러스까지 모두 제거해 깨끗한 반주를 만듭니다." },
+    { value:"karaoke", name:"반주 + 코러스", spec:"코러스 유지 · 균형", description:"메인 보컬만 줄이고 코러스와 백킹 보컬은 일부러 반주에 남깁니다." },
+    { value:"karaoke_fast", name:"반주 + 코러스", spec:"코러스 유지 · 빠른 처리", description:"가벼운 모델로 메인 보컬만 빠르게 줄입니다. 코러스는 남습니다." },
     { value:"vocals", name:"보컬만 추출", spec:"VOCAL · 보컬만 출력", description:"반주를 줄이고 보컬 중심의 스템만 결과 폴더에 저장합니다." },
     { value:"demucs", name:"악기별 분리", spec:"4 STEMS · 악기별 출력", description:"보컬, 드럼, 베이스와 나머지 악기를 네 개의 파일로 나눕니다." },
   ];
@@ -1043,13 +1041,32 @@
   }
 
   // ── 입력 ────────────────────────────────
-  $("urlInput").addEventListener("keydown", async (e) => {
+  let urlBusy = false;
+  async function submitUrls(text) {
+    if (urlBusy) return;
+    urlBusy = true;
+    try {
+      const n = await api().add_urls(text);
+      $("urlInput").value = "";
+      toast(n > 0 ? n + "곡을 대기열에 담았습니다." : "추가된 곡이 없습니다 — 로그를 확인하세요.");
+    } finally {
+      urlBusy = false;
+    }
+  }
+  $("urlInput").addEventListener("keydown", (e) => {
     if (e.key !== "Enter" || !apiReady) return;
     const text = $("urlInput").value;
     if (!text.trim()) { toast("링크를 먼저 붙여넣으세요."); return; }
-    const n = await api().add_urls(text);
-    $("urlInput").value = "";
-    toast(n > 0 ? n + "곡을 대기열에 담았습니다." : "추가된 곡이 없습니다 — 로그를 확인하세요.");
+    submitUrls(text);
+  });
+  // 링크를 붙여넣으면 Enter 없이 바로 담는다. 주소가 아닌 글자면 그대로 두고 기다린다.
+  $("urlInput").addEventListener("paste", () => {
+    if (!apiReady) return;
+    // paste 시점에는 value가 아직 갱신 전이라 다음 틱에 읽는다.
+    setTimeout(() => {
+      const text = $("urlInput").value;
+      if (/https?:\/\//.test(text)) submitUrls(text);
+    }, 0);
   });
   $("filePickBtn").addEventListener("click", async () => {
     if (!apiReady) return;
@@ -1247,7 +1264,6 @@
 
   // ── 창 조작 ─────────────────────────────
   $("minBtn").addEventListener("click", () => api().win_minimize());
-  $("maxBtn").addEventListener("click", () => api().win_toggle_max());
   $("closeBtn").addEventListener("click", async () => {
     const closed = await api().win_close();
     if (!closed && confirm("분리 작업이 진행 중입니다. 중단하고 닫을까요?")) {
