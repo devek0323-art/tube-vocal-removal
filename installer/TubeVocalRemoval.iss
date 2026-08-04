@@ -56,10 +56,10 @@ Source: "..\dist\Tube Vocal Removal\{#MyAppExeName}"; DestDir: "{app}"; Flags: i
 Source: "..\dist\Tube Vocal Removal\runtime\app\*"; DestDir: "{app}\runtime\app"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\dist\Tube Vocal Removal\runtime\bin\*"; DestDir: "{app}\runtime\bin"; Flags: ignoreversion recursesubdirs createallsubdirs
 ; v3.0에서 새로 들어온 패키지. 런타임 전체를 다시 받게 하는 대신 이것만 얹는다.
+; more_itertools는 순수 파이썬이라 exe 아카이브에 들어가므로 여기 없어도 된다.
 Source: "..\dist\Tube Vocal Removal\runtime\whisper\*"; DestDir: "{app}\runtime\whisper"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\dist\Tube Vocal Removal\runtime\tiktoken\*"; DestDir: "{app}\runtime\tiktoken"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\dist\Tube Vocal Removal\runtime\regex\*"; DestDir: "{app}\runtime\regex"; Flags: ignoreversion recursesubdirs createallsubdirs
-Source: "..\dist\Tube Vocal Removal\runtime\more_itertools\*"; DestDir: "{app}\runtime\more_itertools"; Flags: ignoreversion recursesubdirs createallsubdirs
 #else
 Source: "..\dist\Tube Vocal Removal\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 #endif

@@ -134,42 +134,62 @@ RTX 30/40 사용자도 드라이버가 낮으면 CPU로 떨어진다(폴백 안�
 - [x] 정렬로 글자 오인식 제거 — 받아쓰기 일치율 66% → 글자는 항상 정답
 - [x] 샘플 5곡 제작 (한국어 3, 영어 2 / LRC 3, 위스퍼 2)
 
-### 이관
+### 이관 (커밋 6aed113)
 
-- [ ] `app/karaoke.py` — LRC 파싱, ASS 생성, ffmpeg 렌더
-- [ ] `app/cover.py` — 배경 한 장 합성 (썸네일 블러·앨범아트·반사·정보 상자)
-- [ ] `app/align.py` — 위스퍼 세그먼트와 가사 줄 단조 정렬
-- [ ] Pretendard TTF를 저장소에 추가 (지금은 WOFF2뿐이라 Pillow·libass가 못 읽음)
-- [ ] 썸네일 다운로드 — yt-dlp `--write-thumbnail`, 로컬 파일은 없음
+- [x] `app/karaoke.py` — LRC 파싱, 위스퍼 호출, ASS 생성, ffmpeg 렌더
+- [x] `app/cover.py` — 배경 한 장 합성 (썸네일 블러·앨범아트·반사·정보 상자)
+- [x] `app/align.py` — 세그먼트와 가사 줄 단조 정렬
+- [x] `app/assets/Pretendard.ttf` (WOFF2를 fontTools로 변환, 6.5MB)
+- [x] 썸네일 — `_resolve_url_titles`가 URL을 담고 영상 만들 때 내려받음
 
 ### 파이프라인
 
-- [ ] `MODE_MODELS`에 `karaoke_video` 추가 (P1과 같은 모델)
-- [ ] P6일 때 보컬 스템을 지우지 않고 위스퍼까지 들고 있기
-- [ ] 위스퍼 모델 경로를 `%APPDATA%/TubeVocalRemoval/models`로 지정
-- [ ] 진행 표시 — 분리 / 가사 / 인식 / 렌더 단계 이벤트
-- [ ] 가사를 못 찾으면 자막 없이 영상 생성
+- [x] `MODE_MODELS["karaoke_video"]` = P1과 같은 모델, `VIDEO_MODES`로 구분
+- [x] P6일 때 보컬 스템 보존 후 영상까지 만들고 삭제
+- [x] 위스퍼 모델 경로 `download_root=config.MODELS_DIR`
+- [x] 진행 표시 — 가사 맞추는 중 / 영상 만드는 중
+- [x] 가사를 못 찾으면 자막 없이 영상 생성
+- [x] 키 이동·볼륨 보정을 거친 최종 반주로 영상 제작
 
 ### UI
 
-- [ ] P6 항목 추가 (키뱅크 6칸 복원, 블랭크 플레이트 제거)
-- [ ] 모델 미리 받기를 `전체 받기` 하나로 통합
-- [ ] 위스퍼 카드 별도 추가 (P6 전용, 1.4GB)
-- [ ] 모델·업데이트 카드를 2줄 구조로 (`setting-toggle` 재사용)
+- [x] P6 항목 추가, 키뱅크 6칸 복원
+- [x] 모델 미리 받기를 `전체 받기` 하나로 통합
+- [x] 위스퍼 카드 별도 추가 (P6 전용)
+- [x] 모델·업데이트 카드 2줄 구조 (`setting-toggle` 재사용)
 
 ### 배포
 
-- [ ] `requirements.txt` / `requirements-mac.txt`에 `openai-whisper`
-- [ ] 패치 `[Files]`에 새 폴더 추가 (whisper·tiktoken·regex·more_itertools)
-- [ ] `test_runtime_revision_tracks_requirements` 보완 — 패치에 담긴 경우를 예외로
-- [ ] 버전 3.0 (`version.py`, `.iss`, `version_info.txt`)
+- [x] `requirements.txt` / `requirements-mac.txt`에 `openai-whisper==20250625`
+- [x] 패치 `[Files]`에 whisper·tiktoken·regex 추가
+      (more_itertools는 순수 파이썬이라 exe 아카이브에 들어가 제외)
+- [x] `test_runtime_revision_tracks_requirements` 보완 — `RUNTIME_PATCHED_PACKAGES`
+- [x] 버전 3.0 (`version.py`, `.iss`, `version_info.txt`)
+- [x] `TubeVocalRemoval.spec`에 whisper `collect_all` + 폰트
 
-### 테스트
+### 테스트 (64개 통과)
 
-- [ ] LRC 파싱 (여러 태그가 한 줄에 붙는 경우 포함)
-- [ ] 정렬 — 위스퍼가 줄을 쪼갠 경우, 합친 경우, 놓친 경우
-- [ ] 환각 제거 — 보컬 시작 이전 세그먼트
-- [ ] ASS 생성 — 겹침 없음, 시각 단조 증가
+- [x] LRC 파싱 (한 줄에 태그 여러 개)
+- [x] 정렬 — 합친 경우, 놓친 경우
+- [x] 환각 제거 — 보컬 시작 이전 세그먼트
+- [x] P6이 P1과 같은 모델을 쓰는지, 전체 받기에서 중복되지 않는지
+- [x] 정보 상자 제목 정제 (채널명·방송 정보 제거)
+- [x] 번들 글꼴 존재
+
+### 실제 파이프라인 검증
+
+- [x] 로컬 파일 → 반주 MP3 + 노래방 MP4 (썸네일 없는 경로)
+- [x] 유튜브 링크 → 썸네일·가사·반주·MP4
+- [x] 임시 파일(.배경.png/.가사.ass/.썸네일.jpg) 잔여 없음
+- [x] dist에 whisper 1.9M / tiktoken 2.2M / regex 712K / Pretendard.ttf 포함
+
+### 남은 것
+
+- [ ] 빌드 완료 후 산출물 스모크 (`--smoke-test`)
+- [ ] SHA-256 → README 기록
+- [ ] 푸시 → CI macOS 빌드 → DMG 해시
+- [ ] v3.0 릴리스 (에셋 3개)
+- [ ] 스크래치패드·바탕화면 샘플 정리
 
 ### 실기기 확인
 

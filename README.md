@@ -1,4 +1,4 @@
-# Tube Vocal Removal v2.07
+# Tube Vocal Removal v3.0
 
 유튜브 링크나 오디오 파일에서 **보컬과 반주를 AI로 분리**하는 데스크톱 프로그램입니다.
 개인 보컬 연습 용도로 만들어졌습니다.
@@ -7,8 +7,8 @@
 
 | 운영체제 | 다운로드 | 지원 환경 | GPU 가속 |
 |---|---|---|---|
-| Windows | [Tube-Vocal-Removal-Setup-v2.07.exe](https://github.com/devek0323-art/tube-vocal-removal/releases/download/v2.07/Tube-Vocal-Removal-Setup-v2.07.exe) | Windows 10/11 64비트 | NVIDIA CUDA 또는 CPU |
-| macOS | [Tube-Vocal-Removal-macOS-arm64.dmg](https://github.com/devek0323-art/tube-vocal-removal/releases/download/v2.07/Tube-Vocal-Removal-macOS-arm64.dmg) | macOS 14 이상, Apple Silicon(M1 이상) | Apple MPS/CoreML 또는 CPU |
+| Windows | [Tube-Vocal-Removal-Setup-v3.0.exe](https://github.com/devek0323-art/tube-vocal-removal/releases/download/v3.0/Tube-Vocal-Removal-Setup-v3.0.exe) | Windows 10/11 64비트 | NVIDIA CUDA 또는 CPU |
+| macOS | [Tube-Vocal-Removal-macOS-arm64.dmg](https://github.com/devek0323-art/tube-vocal-removal/releases/download/v3.0/Tube-Vocal-Removal-macOS-arm64.dmg) | macOS 14 이상, Apple Silicon(M1 이상) | Apple MPS/CoreML 또는 CPU |
 
 파일 무결성 확인용 SHA-256:
 
@@ -53,6 +53,9 @@ PyTorch MPS와 ONNX Runtime CoreML을 사용합니다.
 3. 곡마다 **키(음정)를 올리거나 내릴** 수 있고, **가사도 함께 저장**됩니다
 4. "분리 시작" 클릭 → 완료되면 출력 폴더에 곡별로 저장
 
+P6(노래방 영상)은 반주와 가사에 더해 MP4까지 만듭니다. 싱크 가사가 없는 곡은
+가사 인식 모델(약 1.4GB)을 한 번 내려받습니다. 설정에서 미리 받아둘 수 있습니다.
+
 여러 곡을 한 번에 담아 순차 처리할 수 있고, 처리 중에도 곡을 추가할 수 있습니다.
 
 ## 소스에서 빌드
@@ -76,6 +79,16 @@ pyinstaller TubeVocalRemoval-mac.spec --noconfirm
 ```
 
 두 플랫폼의 전체 패키징 절차는 `.github/workflows/build.yml`에 정의되어 있습니다.
+
+### v3.0 변경
+
+- **노래방 영상 (P6)** — 고르고 시작하면 가사 자막이 흐르는 1280×720 MP4가 나옵니다.
+  곡 폴더에 반주·영상·가사가 함께 저장됩니다
+- **가사 타이밍** — 싱크 가사(LRC)가 있으면 그대로 쓰고, 없으면 분리한 보컬을 음성
+  인식에 태워 타이밍만 맞춥니다. **가사 글자는 인식 결과를 쓰지 않고** 원래 찾아온
+  가사를 그대로 쓰므로 오타가 생기지 않습니다
+- **모델 미리 받기 정리** — 드롭다운을 없애고 전체 받기 하나로 합쳤습니다. 가사 인식
+  모델(P6 전용)은 별도 항목으로 두어 P6을 쓰지 않으면 받지 않아도 됩니다
 
 ### v2.07 변경
 
@@ -131,6 +144,7 @@ pyinstaller TubeVocalRemoval-mac.spec --noconfirm
 | P3 | 반주 + 코러스 · 빠른 처리 | 구형 PC를 위한 빠른 모델 |
 | P4 | 보컬만 추출 | 반주를 지우고 보컬만 저장 |
 | P5 | 악기별 분리 · 4트랙 | 보컬·드럼·베이스·기타 악기 각각 저장 |
+| P6 | 노래방 영상 · MP4 | 반주에 가사 자막을 얹어 영상까지 제작 |
 
 ## 이용 안내
 
@@ -146,3 +160,5 @@ pyinstaller TubeVocalRemoval-mac.spec --noconfirm
 - [Deno](https://deno.land/) (MIT) · [PyTorch](https://pytorch.org/) (BSD-3) · [pywebview](https://pywebview.flowrl.com/) (BSD-3)
 - 분리 모델: [Ultimate Vocal Remover](https://github.com/Anjok07/ultimatevocalremovergui) 및 커뮤니티 제작 모델 (첫 사용 시 공개 저장소에서 자동 다운로드)
 - [Demucs](https://github.com/facebookresearch/demucs) (MIT) — 4트랙 분리 모델
+- [Whisper](https://github.com/openai/whisper) (MIT) — 노래방 영상의 가사 타이밍 (P6에서만 사용)
+- [Pretendard](https://github.com/orioncactus/pretendard) (OFL-1.1) — UI·영상 자막 글꼴
