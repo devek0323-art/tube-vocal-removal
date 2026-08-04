@@ -227,6 +227,18 @@ class CoreTests(unittest.TestCase):
         self.assertIn(f'#define MyAppVersion "{APP_VERSION}"', text)
         self.assertIn(f'#define MyRuntimeRevision "{RUNTIME_REVISION}"', text)
 
+    def test_exe_version_resource_matches_app_version(self):
+        """exe에 새겨지는 버전. 여기를 빠뜨리면 앱은 2.07인데 파일 속성은 옛 버전이 된다."""
+        from app.version import APP_VERSION
+
+        info = Path(__file__).resolve().parent.parent / "installer" / "version_info.txt"
+        text = info.read_text(encoding="utf-8")
+        self.assertIn(f"StringStruct('FileVersion', '{APP_VERSION}')", text)
+        self.assertIn(f"StringStruct('ProductVersion', '{APP_VERSION}')", text)
+        major, minor = (int(part) for part in APP_VERSION.split("."))
+        self.assertIn(f"filevers=({major}, 0, {minor}, 0)", text)
+        self.assertIn(f"prodvers=({major}, 0, {minor}, 0)", text)
+
     def test_update_prefers_patch_matching_runtime(self):
         from app.version import RUNTIME_REVISION
 
