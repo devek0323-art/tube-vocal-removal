@@ -600,10 +600,13 @@ class Pipeline:
         return align.align(found["text"].splitlines(),
                            align.drop_hallucinations(segments, onset), onset=onset)
 
-    @staticmethod
-    def _fetch_thumbnail(item, song_dir: Path):
+    def _fetch_thumbnail(self, item, song_dir: Path):
         """유튜브 썸네일을 내려받는다. 로컬 파일이거나 실패하면 None (배경은 단색으로)."""
         url = getattr(item, "thumbnail_url", "")
+        if not url and item.kind == "url":
+            # 주소는 목록에 넣을 때 제목과 함께 받아 두지만, 그 스레드가 끝나기 전에
+            # 분리를 시작했거나 캐시된 파일을 다시 쓰면 비어 있다. 그때는 지금 묻는다.
+            url = self._probe_thumbnail_url(item.source)
         if not url:
             return None
         import urllib.request
@@ -614,9 +617,26 @@ class Pipeline:
             with urllib.request.urlopen(request, timeout=20) as response:
                 destination.write_bytes(response.read())
             return destination
-        except Exception:
+        except Exception as exc:
             destination.unlink(missing_ok=True)
+            self._log(f"썸네일을 받지 못해 단색 배경으로 만듭니다: {exc}", False)
             return None
+
+    @staticmethod
+    def _probe_thumbnail_url(source: str) -> str:
+        """썸네일 주소만 다시 물어본다. 영상을 받지 않으므로 몇 초면 끝난다."""
+        try:
+            result = subprocess.run(
+                [str(YTDLP), "--print", "thumbnail", "--skip-download", "--no-playlist",
+                 "--no-warnings", "--socket-timeout", "10", source],
+                capture_output=True, text=True, encoding="utf-8", errors="replace",
+                timeout=35, **hidden_process_kwargs(),
+            )
+            if result.returncode == 0:
+                return next((line.strip() for line in result.stdout.splitlines() if line.strip()), "")
+        except (OSError, subprocess.SubprocessError):
+            pass
+        return ""
 
     @staticmethod
     def _artist_track(item):

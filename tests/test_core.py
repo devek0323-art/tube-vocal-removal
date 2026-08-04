@@ -40,8 +40,9 @@ class FakeDownload:
     def info(self):
         return {"Content-Length": str(len(self._data))}
 
-    def read(self, size):
-        chunk = self._data[self._position:self._position + size]
+    def read(self, size=None):
+        end = len(self._data) if size is None else self._position + size
+        chunk = self._data[self._position:end]
         self._position += len(chunk)
         return chunk
 
@@ -302,6 +303,29 @@ class CoreTests(unittest.TestCase):
                     {"start": 25.0, "end": 28.0, "text": "진짜"}]
         kept = drop_hallucinations(segments, onset=18.5)
         self.assertEqual([s["text"] for s in kept], ["진짜"])
+
+    def test_thumbnail_is_looked_up_again_when_the_prefetch_missed_it(self):
+        """붙여넣자마자 시작하거나 캐시를 재사용하면 썸네일 주소가 비어 있다.
+        제목은 다운로드 파일명에서 채워지므로 제목만 맞고 배경만 빠진다."""
+        pipeline = Pipeline(lambda event: None)
+        item = Item("url", "https://youtu.be/abc123", "버즈 - Monologue")
+        self.assertEqual(item.thumbnail_url, "")
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.object(Pipeline, "_probe_thumbnail_url",
+                                   return_value="https://i.ytimg.com/vi/abc123/hq.jpg") as probe, \
+                    mock.patch("urllib.request.urlopen", return_value=FakeDownload(b"\xff\xd8jpeg")):
+                path = pipeline._fetch_thumbnail(item, Path(tmp))
+            self.assertTrue(probe.called)
+            self.assertEqual(path.read_bytes(), b"\xff\xd8jpeg")
+
+    def test_thumbnail_is_not_probed_for_local_files(self):
+        """로컬 파일에는 썸네일이 없다. yt-dlp를 부르면 시간만 버린다."""
+        pipeline = Pipeline(lambda event: None)
+        item = Item("file", "C:/음악/노래.mp3", "노래")
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch.object(Pipeline, "_probe_thumbnail_url") as probe:
+                self.assertIsNone(pipeline._fetch_thumbnail(item, Path(tmp)))
+            self.assertFalse(probe.called)
 
     def test_whisper_download_button_path_runs_to_the_end(self):
         """받기 버튼이 타는 길을 통째로 지난다. 첫 줄에서 ensure_dirs 인자가 빠져 죽었었다."""
