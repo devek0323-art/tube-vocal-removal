@@ -1,4 +1,4 @@
-# Tube Vocal Removal v2.06
+# Tube Vocal Removal v2.07
 
 유튜브 링크나 오디오 파일에서 **보컬과 반주를 AI로 분리**하는 데스크톱 프로그램입니다.
 개인 보컬 연습 용도로 만들어졌습니다.
@@ -7,14 +7,14 @@
 
 | 운영체제 | 다운로드 | 지원 환경 | GPU 가속 |
 |---|---|---|---|
-| Windows | [Tube-Vocal-Removal-Setup-v2.06.exe](https://github.com/devek0323-art/tube-vocal-removal/releases/download/v2.06/Tube-Vocal-Removal-Setup-v2.06.exe) | Windows 10/11 64비트 | NVIDIA CUDA 또는 CPU |
-| macOS | [Tube-Vocal-Removal-macOS-arm64.dmg](https://github.com/devek0323-art/tube-vocal-removal/releases/download/v2.06/Tube-Vocal-Removal-macOS-arm64.dmg) | macOS 14 이상, Apple Silicon(M1 이상) | Apple MPS/CoreML 또는 CPU |
+| Windows | [Tube-Vocal-Removal-Setup-v2.07.exe](https://github.com/devek0323-art/tube-vocal-removal/releases/download/v2.07/Tube-Vocal-Removal-Setup-v2.07.exe) | Windows 10/11 64비트 | NVIDIA CUDA 또는 CPU |
+| macOS | [Tube-Vocal-Removal-macOS-arm64.dmg](https://github.com/devek0323-art/tube-vocal-removal/releases/download/v2.07/Tube-Vocal-Removal-macOS-arm64.dmg) | macOS 14 이상, Apple Silicon(M1 이상) | Apple MPS/CoreML 또는 CPU |
 
 파일 무결성 확인용 SHA-256:
 
-- Windows (정식): `8D787FD7BEE524D77E6741C92A1AB8DB22D86FCC1B5B63BA334EB447E0F28285`
-- Windows (업데이트 패치): `B401BBA2F22A18A7C5DA4FB2EEF5375C5B8EDBA51B5F52122D98B6829B9C6BDD`
-- macOS: `6A342D8977EC9F95DB0C4E08EEB0F58CF3BE6B24B22E1D9811A939387E907A5E`
+- Windows (정식): `92F7CCFCB0FB861ECB3BBA8ACC960D10F196882036684E95D21A2E3EDBB85A79`
+- Windows (업데이트 패치): `2B8FD0A4C2418FBD36C9AE603F08B088B34FEE8D37F4C8BE9C33BF2C91B38AE1`
+- macOS: (빌드 후 갱신)
 
 - AI 모델은 첫 사용 시 자동으로 다운로드됩니다 (인터넷 연결 필요)
 - 기본은 CPU로 동작하며, 지원 GPU가 감지되면 설정에서 가속을 켤 수 있습니다
@@ -49,7 +49,7 @@ PyTorch MPS와 ONNX Runtime CoreML을 사용합니다.
 ## 사용법
 
 1. 유튜브 링크를 붙여넣고 Enter — 또는 오디오 파일을 창에 드래그
-2. 분리 방식 선택 (기본 추천: 반주 + 코러스)
+2. 분리 방식 선택 (기본값: 모든 보컬 제거 — 코러스를 남기려면 P2·P3)
 3. 곡마다 **키(음정)를 올리거나 내릴** 수 있고, **가사도 함께 저장**됩니다
 4. "분리 시작" 클릭 → 완료되면 출력 폴더에 곡별로 저장
 
@@ -76,6 +76,18 @@ pyinstaller TubeVocalRemoval-mac.spec --noconfirm
 ```
 
 두 플랫폼의 전체 패키징 절차는 `.github/workflows/build.yml`에 정의되어 있습니다.
+
+### v2.07 변경
+
+- **분리 모델 교체** — 실제 곡으로 재서 골랐습니다. 보컬이 없는 구간에서는 정답 반주가
+  원본 그대로라는 점을 이용해 악기 손실과 아티팩트를 측정했고, 세 곡 모두에서 앞선 모델로
+  바꿨습니다. 반주가 덜 깎이고 금속음이 줄었으며 '모든 보컬 제거'는 35% 빨라졌습니다
+- **'모든 보컬 제거'가 기본값** — 기존 기본값은 코러스를 일부러 남기는 모드라 목소리가
+  들리는 것을 고장으로 오해하기 쉬웠습니다. 코러스를 남기려면 P2·P3을 고르세요
+- **3모델 앙상블 모드 삭제** — 단일 모델과 결과가 같은데 2.5배 느렸습니다. 조합과
+  합성 방식을 바꿔가며 재봐도 단일 모델을 이기지 못했습니다
+- **링크 자동 등록** — 유튜브 링크를 붙여넣으면 Enter 없이 대기열에 담깁니다
+- **창 최대화 제거** — 레이아웃이 고정 폭 기준이라 늘리면 어긋났습니다
 
 ### v2.06 변경
 
@@ -108,14 +120,13 @@ pyinstaller TubeVocalRemoval-mac.spec --noconfirm
 
 ### 분리 방식
 
-| 방식 | 설명 |
-|---|---|
-| 반주 + 코러스 · 추천 | 메인 보컬만 제거하고 코러스는 유지 |
-| 반주 + 코러스 · 빠른 처리 | 구형 PC를 위한 빠른 모델 |
-| 반주 + 코러스 · 최고 품질 | 3개 모델 앙상블 (가장 정교, 느림) |
-| 반주만 · 모든 보컬 제거 | 코러스 포함 목소리 전부 제거 |
-| 보컬만 추출 | 반주를 지우고 보컬만 저장 |
-| 악기별 분리 · 4트랙 | 보컬·드럼·베이스·기타 악기 각각 저장 |
+| | 방식 | 설명 |
+|---|---|---|
+| P1 | 모든 보컬 제거 · 추천 | 리드 보컬과 코러스까지 전부 제거 (기본값) |
+| P2 | 반주 + 코러스 | 메인 보컬만 제거하고 코러스는 일부러 남김 |
+| P3 | 반주 + 코러스 · 빠른 처리 | 구형 PC를 위한 빠른 모델 |
+| P4 | 보컬만 추출 | 반주를 지우고 보컬만 저장 |
+| P5 | 악기별 분리 · 4트랙 | 보컬·드럼·베이스·기타 악기 각각 저장 |
 
 ## 이용 안내
 
