@@ -205,18 +205,34 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(Pipeline._search_title(link), "버스커 버스커 - 벚꽃 엔딩")
 
     def test_runtime_revision_tracks_requirements(self):
-        """패키지를 바꾸면 런타임도 바뀐다. RUNTIME_REVISION을 안 올리면 패치가 앱을 망가뜨린다."""
-        from app.version import RUNTIME_REQUIREMENTS_SHA
+        """패키지를 바꾸면 런타임도 바뀐다. RUNTIME_REVISION을 안 올리면 패치가 앱을 망가뜨린다.
+
+        예외는 하나다 — 새로 들어온 패키지를 패치가 직접 담고 있으면 런타임을 통째로
+        다시 받게 할 이유가 없다. 그 경우 RUNTIME_PATCHED_PACKAGES에 적어 둔다.
+        """
+        from app.version import RUNTIME_PATCHED_PACKAGES, RUNTIME_REQUIREMENTS_SHA
 
         # 줄바꿈이 정규화되도록 텍스트로 읽는다. 바이트로 읽으면 CRLF 체크아웃에서 값이 달라진다.
-        requirements = Path(__file__).resolve().parent.parent / "requirements.txt"
-        text = requirements.read_text(encoding="utf-8")
+        root = Path(__file__).resolve().parent.parent
+        text = (root / "requirements.txt").read_text(encoding="utf-8")
         actual = hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
         self.assertEqual(
             actual, RUNTIME_REQUIREMENTS_SHA,
-            "requirements.txt가 바뀌었습니다. app/version.py의 RUNTIME_REVISION을 올리고 "
+            "requirements.txt가 바뀌었습니다. app/version.py의 RUNTIME_REVISION을 올리거나, "
+            "패치가 새 패키지를 담는다면 RUNTIME_PATCHED_PACKAGES에 적고 "
             f"RUNTIME_REQUIREMENTS_SHA를 '{actual}'로 갱신하세요.",
         )
+
+        # 패치로 나간다고 적어 둔 패키지는 설치 스크립트가 실제로 담고 있어야 한다.
+        script = (root / "installer" / "TubeVocalRemoval.iss").read_text(encoding="utf-8")
+        # `#ifdef PATCH`는 [Setup]에도 있으므로 [Files] 안쪽만 본다.
+        patch_block = script.split("[Files]", 1)[1].split("#ifdef PATCH", 1)[1].split("#else", 1)[0]
+        for package in RUNTIME_PATCHED_PACKAGES:
+            self.assertIn(
+                f"runtime\\{package}\\*", patch_block,
+                f"{package}를 패치로 내보내기로 했는데 설치 스크립트에 없습니다. "
+                "이대로 나가면 업데이트한 앱이 그 패키지를 못 찾습니다.",
+            )
 
     def test_installer_script_matches_app_version(self):
         """설치 스크립트의 버전·런타임 값이 version.py와 어긋나면 잘못된 파일명이 나간다."""
@@ -226,6 +242,66 @@ class CoreTests(unittest.TestCase):
         text = script.read_text(encoding="utf-8")
         self.assertIn(f'#define MyAppVersion "{APP_VERSION}"', text)
         self.assertIn(f'#define MyRuntimeRevision "{RUNTIME_REVISION}"', text)
+
+    def test_lrc_parsing_handles_repeated_stamps(self):
+        """후렴처럼 한 줄에 태그가 여러 개 붙는 LRC가 흔하다. 전부 살려야 한다."""
+        from app.karaoke import parse_lrc
+
+        lines = parse_lrc("[00:12.30][01:05.00] 첫 줄\n[00:20.00] 둘째 줄\n[bogus] 태그만")
+        self.assertEqual(lines, [(12.3, "첫 줄"), (20.0, "둘째 줄"), (65.0, "첫 줄")])
+
+    def test_align_keeps_real_lyrics_and_spreads_merged_segments(self):
+        """인식된 글자는 버리고 타이밍만 쓴다. 한 세그먼트가 두 줄을 덮으면 나눠 넣는다."""
+        from app.align import align
+
+        segments = [{"start": 10.0, "end": 14.0, "text": "첫줄 둘째줄"},
+                    {"start": 20.0, "end": 23.0, "text": "셋째주울"}]      # 일부러 오인식
+        lines = align(["첫 줄", "둘째 줄", "셋째 줄"], segments, onset=9.0)
+        self.assertEqual([text for _, text in lines], ["첫 줄", "둘째 줄", "셋째 줄"])
+        times = [start for start, _ in lines]
+        self.assertEqual(times, sorted(times))
+        self.assertGreater(times[1] - times[0], 0.35)      # 겹쳐서 스쳐가지 않아야 한다
+        self.assertGreaterEqual(times[0], 9.0)
+
+    def test_align_fills_missed_lines_without_pushing_later_ones(self):
+        """인식기가 놓친 줄을 앞줄 뒤에 붙이면 이후가 전부 밀린다. 뒤 기준점에서 채워야 한다."""
+        from app.align import align
+
+        segments = [{"start": 30.0, "end": 33.0, "text": "둘째 줄"}]
+        lines = align(["첫 줄", "둘째 줄"], segments, onset=10.0)
+        self.assertAlmostEqual(lines[1][0], 30.0, places=1)
+        self.assertLess(lines[0][0], 30.0)
+
+    def test_drop_hallucinations_removes_pre_vocal_segments(self):
+        """가사를 프롬프트로 넣으면 인식기가 0초에 그 문장을 그대로 뱉는다."""
+        from app.align import drop_hallucinations
+
+        segments = [{"start": 0.0, "end": 4.0, "text": "환각"},
+                    {"start": 25.0, "end": 28.0, "text": "진짜"}]
+        kept = drop_hallucinations(segments, onset=18.5)
+        self.assertEqual([s["text"] for s in kept], ["진짜"])
+
+    def test_karaoke_video_mode_shares_the_instrumental_model(self):
+        """P6은 P1으로 분리한 뒤 영상을 만든다. 모델이 갈리면 결과가 달라진다."""
+        from app.pipeline import VIDEO_MODES
+
+        self.assertEqual(MODE_MODELS["karaoke_video"], MODE_MODELS["best"])
+        self.assertIn("karaoke_video", VIDEO_MODES)
+        # 전체 받기는 같은 모델을 두 번 받지 않는다.
+        self.assertNotIn("karaoke_video", ALL_MODEL_MODES)
+
+    def test_video_plate_strips_channel_and_broadcast_noise(self):
+        """원제목을 그대로 쓰면 정보 상자에 채널명·방송 정보가 들어가 지저분하다."""
+        noisy = "[직캠] 홍경민 - Drowning [불후의 명곡2 전설을 노래하다] ｜ KBS 260801 방송"
+        artist, track = Pipeline._artist_track(Item("url", "x", noisy))
+        self.assertEqual(artist, "홍경민")
+        self.assertEqual(track, "Drowning")
+
+    def test_bundled_font_exists_for_video_rendering(self):
+        """Pillow와 libass가 함께 쓰는 글꼴. 없으면 영상 글자가 통째로 깨진다."""
+        from app.cover import FONT
+
+        self.assertTrue(FONT.is_file(), f"{FONT}가 없습니다.")
 
     def test_volume_fix_only_applies_gain(self):
         """볼륨 보정은 게인만 건다. 구간별 게인을 다시 타면 조용한 곡의 잔재가 도드라진다."""

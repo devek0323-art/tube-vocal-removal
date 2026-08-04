@@ -5,4 +5,6 @@ python-stretch==0.3.1
 soundfile==0.14.0
 torch==2.13.0
 imageio-ffmpeg==0.6.0
+# 노래방 영상(P6)의 가사 타이밍용. torch를 재사용해 번들은 6MB만 는다.
+openai-whisper==20250625
 pyinstaller==6.16.0

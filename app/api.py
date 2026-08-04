@@ -239,6 +239,9 @@ class Api:
     def download_all_models(self):
         return self._pipeline.download_all_models(self._cfg)
 
+    def download_whisper_model(self):
+        return self._pipeline.download_whisper_model(self._cfg)
+
     def get_model_download_status(self):
         return self._pipeline.model_download_status()
 

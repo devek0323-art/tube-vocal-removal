@@ -56,7 +56,7 @@ def validated(values: dict | None) -> dict:
         result["output_format"] = values["output_format"]
     if values.get("mp3_bitrate") in {"128k", "192k", "256k", "320k"}:
         result["mp3_bitrate"] = values["mp3_bitrate"]
-    if values.get("mode") in {"karaoke_fast", "karaoke", "best", "vocals", "demucs"}:
+    if values.get("mode") in {"karaoke_fast", "karaoke", "best", "vocals", "demucs", "karaoke_video"}:
         result["mode"] = values["mode"]
     for key in ("keep_source", "use_gpu", "volume_fix", "download_lyrics"):
         if key in values and isinstance(values[key], bool):

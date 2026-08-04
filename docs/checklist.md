@@ -121,3 +121,57 @@ RTX 30/40 사용자도 드라이버가 낮으면 CPU로 떨어진다(폴백 안�
 - [x] 빌드 자동화 — `build.ps1 -Installer`가 테스트·빌드·정식·패치를 한 번에
 - [x] 어긋남 방지 테스트 — `.iss` 버전, `requirements.txt` 해시
 - [x] 릴리스 제목 형식 통일 (v2.03 소급 수정)
+
+## v3.0 — 노래방 영상 (P6) 진행 중
+
+### 프로토타입에서 확인 끝난 것
+
+- [x] LRCLIB 싱크 가사(LRC)를 이미 받아오고 있음 — `fetch_lyrics()`가 `synced` 반환
+- [x] ffmpeg에 libass·subtitles·drawtext·libx264·h264_nvenc 전부 있음
+- [x] Pillow가 이미 번들에 포함 (`runtime/PIL/`)
+- [x] 위스퍼 추가 시 번들 증가분 6.3MB (torch·CUDA 재사용)
+- [x] 위스퍼 medium으로 4분 44초 곡 인식 8.6초 (GPU)
+- [x] 정렬로 글자 오인식 제거 — 받아쓰기 일치율 66% → 글자는 항상 정답
+- [x] 샘플 5곡 제작 (한국어 3, 영어 2 / LRC 3, 위스퍼 2)
+
+### 이관
+
+- [ ] `app/karaoke.py` — LRC 파싱, ASS 생성, ffmpeg 렌더
+- [ ] `app/cover.py` — 배경 한 장 합성 (썸네일 블러·앨범아트·반사·정보 상자)
+- [ ] `app/align.py` — 위스퍼 세그먼트와 가사 줄 단조 정렬
+- [ ] Pretendard TTF를 저장소에 추가 (지금은 WOFF2뿐이라 Pillow·libass가 못 읽음)
+- [ ] 썸네일 다운로드 — yt-dlp `--write-thumbnail`, 로컬 파일은 없음
+
+### 파이프라인
+
+- [ ] `MODE_MODELS`에 `karaoke_video` 추가 (P1과 같은 모델)
+- [ ] P6일 때 보컬 스템을 지우지 않고 위스퍼까지 들고 있기
+- [ ] 위스퍼 모델 경로를 `%APPDATA%/TubeVocalRemoval/models`로 지정
+- [ ] 진행 표시 — 분리 / 가사 / 인식 / 렌더 단계 이벤트
+- [ ] 가사를 못 찾으면 자막 없이 영상 생성
+
+### UI
+
+- [ ] P6 항목 추가 (키뱅크 6칸 복원, 블랭크 플레이트 제거)
+- [ ] 모델 미리 받기를 `전체 받기` 하나로 통합
+- [ ] 위스퍼 카드 별도 추가 (P6 전용, 1.4GB)
+- [ ] 모델·업데이트 카드를 2줄 구조로 (`setting-toggle` 재사용)
+
+### 배포
+
+- [ ] `requirements.txt` / `requirements-mac.txt`에 `openai-whisper`
+- [ ] 패치 `[Files]`에 새 폴더 추가 (whisper·tiktoken·regex·more_itertools)
+- [ ] `test_runtime_revision_tracks_requirements` 보완 — 패치에 담긴 경우를 예외로
+- [ ] 버전 3.0 (`version.py`, `.iss`, `version_info.txt`)
+
+### 테스트
+
+- [ ] LRC 파싱 (여러 태그가 한 줄에 붙는 경우 포함)
+- [ ] 정렬 — 위스퍼가 줄을 쪼갠 경우, 합친 경우, 놓친 경우
+- [ ] 환각 제거 — 보컬 시작 이전 세그먼트
+- [ ] ASS 생성 — 겹침 없음, 시각 단조 증가
+
+### 실기기 확인
+
+- [ ] CPU에서 위스퍼 소요 시간 측정 후 모델 크기 결정
+- [ ] macOS에서 위스퍼 가속 여부, libass 글꼴 인식

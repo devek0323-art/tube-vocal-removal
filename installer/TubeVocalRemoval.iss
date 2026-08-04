@@ -4,7 +4,7 @@
 ; 패치는 런타임(파이썬·CUDA)을 빼고 릴리스마다 바뀌는 것만 담는다.
 ; RuntimeRevision은 app/version.py의 RUNTIME_REVISION과 반드시 같아야 한다.
 #define MyAppName "Tube Vocal Removal"
-#define MyAppVersion "2.07"
+#define MyAppVersion "3.0"
 #define MyRuntimeRevision "cu128-1"
 #define MyAppPublisher "Tube Vocal Removal"
 #define MyAppExeName "Tube Vocal Removal.exe"
@@ -39,7 +39,7 @@ PrivilegesRequired=lowest
 UninstallDisplayIcon={app}\{#MyAppExeName}
 CloseApplications=yes
 RestartApplications=no
-VersionInfoVersion=2.0.7.0
+VersionInfoVersion=3.0.0.0
 VersionInfoCompany=Tube Vocal Removal
 VersionInfoProductName=Tube Vocal Removal
 VersionInfoProductVersion={#MyAppVersion}
@@ -55,6 +55,11 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Source: "..\dist\Tube Vocal Removal\{#MyAppExeName}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "..\dist\Tube Vocal Removal\runtime\app\*"; DestDir: "{app}\runtime\app"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\dist\Tube Vocal Removal\runtime\bin\*"; DestDir: "{app}\runtime\bin"; Flags: ignoreversion recursesubdirs createallsubdirs
+; v3.0에서 새로 들어온 패키지. 런타임 전체를 다시 받게 하는 대신 이것만 얹는다.
+Source: "..\dist\Tube Vocal Removal\runtime\whisper\*"; DestDir: "{app}\runtime\whisper"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\dist\Tube Vocal Removal\runtime\tiktoken\*"; DestDir: "{app}\runtime\tiktoken"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\dist\Tube Vocal Removal\runtime\regex\*"; DestDir: "{app}\runtime\regex"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\dist\Tube Vocal Removal\runtime\more_itertools\*"; DestDir: "{app}\runtime\more_itertools"; Flags: ignoreversion recursesubdirs createallsubdirs
 #else
 Source: "..\dist\Tube Vocal Removal\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 #endif

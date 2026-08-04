@@ -1,7 +1,7 @@
 VSVersionInfo(
   ffi=FixedFileInfo(
-    filevers=(2, 0, 7, 0),
-    prodvers=(2, 0, 7, 0),
+    filevers=(3, 0, 0, 0),
+    prodvers=(3, 0, 0, 0),
     mask=0x3f,
     flags=0x0,
     OS=0x40004,
@@ -16,12 +16,12 @@ VSVersionInfo(
         [
           StringStruct('CompanyName', 'Tube Vocal Removal'),
           StringStruct('FileDescription', 'YouTube 및 오디오 보컬 분리 프로그램'),
-          StringStruct('FileVersion', '2.07'),
+          StringStruct('FileVersion', '3.0'),
           StringStruct('InternalName', 'Tube Vocal Removal'),
           StringStruct('LegalCopyright', 'Copyright © 2026 Tube Vocal Removal'),
           StringStruct('OriginalFilename', 'Tube Vocal Removal.exe'),
           StringStruct('ProductName', 'Tube Vocal Removal'),
-          StringStruct('ProductVersion', '2.07')
+          StringStruct('ProductVersion', '3.0')
         ]
       )
     ]),

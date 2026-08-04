@@ -28,10 +28,15 @@ MODE_MODELS = {
     "karaoke_fast": "UVR_MDXNET_KARA_2.onnx",
     "vocals": "mel_band_roformer_instrumental_becruily.ckpt",
     "demucs": "htdemucs.yaml",
+    # 노래방 영상 — 분리는 `best`와 같고 뒤에 영상을 한 번 더 만든다.
+    "karaoke_video": "mel_band_roformer_instrumental_becruily.ckpt",
 }
 
-# `vocals`와 `best`는 같은 모델을 공유하므로 전체 받기에서는 한 번만 처리한다.
+# `vocals`·`karaoke_video`는 `best`와 모델을 공유하므로 전체 받기에서는 한 번만 처리한다.
 ALL_MODEL_MODES = ("karaoke", "best", "karaoke_fast", "demucs")
+
+# 영상 모드는 반주뿐 아니라 보컬 스템도 필요하다(가사 타이밍 추출용).
+VIDEO_MODES = frozenset({"karaoke_video"})
 
 # audio-separator 0.44.3이 각 선택지에 요구하는 캐시 파일이다. 모델 본체뿐 아니라
 # 설정 파일과 Demucs 가중치까지 있어야 설치 완료로 본다.
@@ -50,7 +55,15 @@ MODEL_REQUIRED_FILES = {
     ),
     "karaoke_fast": ("UVR_MDXNET_KARA_2.onnx",),
     "demucs": ("htdemucs.yaml", "955717e8-8726e21a.th"),
+    "karaoke_video": (
+        "mel_band_roformer_instrumental_becruily.ckpt",
+        "config_mel_band_roformer_instrumental_becruily.yaml",
+    ),
 }
+
+# 가사 타이밍 인식 모델. 분리 모델이 아니므로 전체 받기와 따로 관리한다.
+# CUDA가 있으면 medium, 없으면 small을 쓴다.
+WHISPER_FILES = {"medium": "medium.pt", "small": "small.pt"}
 
 # 볼륨 보정 — 곡 전체에 같은 게인을 한 번만 걸고 넘치는 피크만 리미터로 잡는다.
 # 예전에는 dynaudnorm으로 구간마다 게인을 다시 계산했는데, 조용한 스템에서 구간별
@@ -96,6 +109,7 @@ class Item:
         self.key_shift = 0          # 이 곡의 목표 키 이동 반음 수 (-6~+6)
         self.detected_key = ""      # 감지된 원곡 키 (예: 'C# minor'), 오디오 확보 후 채워짐
         self.want_lyrics = True     # 이 곡의 가사 저장 여부
+        self.thumbnail_url = ""     # 노래방 영상 배경으로 쓸 썸네일 (로컬 파일은 없음)
 
     def to_dict(self):
         return {
@@ -176,6 +190,7 @@ class Pipeline:
                     raise RuntimeError("video title is empty")
                 if item in self.items and item.status == "wait":
                     item.title = title
+                    item.thumbnail_url = str(info.get("thumbnail") or "")
                     self._emit_queue()
                     self._log(f"제목 확인: {title}", True)
             except (OSError, subprocess.SubprocessError, json.JSONDecodeError, RuntimeError):
@@ -470,6 +485,8 @@ class Pipeline:
             wanted = {"보컬"}
         else:
             wanted = {"반주"}
+        # 영상 모드는 보컬 스템으로 가사 타이밍을 잡으므로 지우지 않고 들고 있는다.
+        vocal_stem = None
         normalize = bool(cfg.get("volume_fix", False)) and mode != "demucs"
         key_shift = 0 if mode == "demucs" else int(cfg.get("key_shift", 0))
         if key_shift:
@@ -485,7 +502,10 @@ class Pipeline:
                 continue
             stem = self._stem_label(path.name)
             if stem not in wanted:
-                path.unlink(missing_ok=True)
+                if mode in VIDEO_MODES and stem == "보컬" and vocal_stem is None:
+                    vocal_stem = path          # 가사 타이밍용. 영상까지 만든 뒤 지운다.
+                else:
+                    path.unlink(missing_ok=True)
                 continue
             destination = song_dir / f"{sanitize_name(item.title)} ({stem}).{extension}"
             source_path = path
@@ -508,12 +528,100 @@ class Pipeline:
         if not moved:
             shutil.rmtree(song_dir, ignore_errors=True)
             raise RuntimeError("분리 결과 파일이 생성되지 않았습니다.")
+        found = None
         if cfg.get("download_lyrics", True) and getattr(item, "want_lyrics", True):
-            self._save_lyrics(item, song_dir, src)
+            found = self._save_lyrics(item, song_dir, src)
+        if mode in VIDEO_MODES:
+            # 영상은 맨 마지막에 만든다. 키 이동·볼륨 보정을 거친 최종 반주를 써야
+            # 저장된 오디오와 영상 소리가 일치한다.
+            self._make_video(item, song_dir, moved[0], vocal_stem, found, cfg)
+        if vocal_stem is not None:
+            vocal_stem.unlink(missing_ok=True)
         if item.kind == "url" and cfg.get("keep_source", False):
             shutil.copy2(src, song_dir / sanitize_name(src.name))
         self.emit({"type": "progress", "id": item.id, "stage": "완료", "pct": 100})
         return song_dir
+
+    def _make_video(self, item, song_dir: Path, audio: Path, vocal_stem, found, cfg: dict):
+        """노래방 MP4를 만든다. 실패해도 분리 결과는 남기고 로그만 남긴다."""
+        from app import karaoke
+        from app.cover import compose
+
+        try:
+            self.emit({"type": "progress", "id": item.id, "stage": "가사 맞추는 중", "pct": 100})
+            duration = self._audio_duration(audio) or 0.0
+            lines = self._video_lines(item, vocal_stem, found, cfg)
+            artist, track = self._artist_track(item)
+
+            self.emit({"type": "progress", "id": item.id, "stage": "영상 만드는 중", "pct": 100})
+            background = song_dir / ".배경.png"
+            thumbnail = self._fetch_thumbnail(item, song_dir)
+            compose(thumbnail, artist, track, background)
+            if thumbnail:
+                thumbnail.unlink(missing_ok=True)
+            subtitle = None
+            if lines:
+                subtitle = karaoke.write_ass(lines, song_dir / ".가사.ass", duration)
+            destination = song_dir / f"{sanitize_name(item.title)} (노래방).mp4"
+            karaoke.render(FFMPEG, audio, background, subtitle, destination, duration,
+                           gpu=bool(cfg.get("use_gpu", False)))
+            background.unlink(missing_ok=True)
+            if subtitle:
+                Path(subtitle).unlink(missing_ok=True)
+            self._log(f"노래방 영상 저장: {item.title}")
+        except Exception as exc:
+            self._log(f"노래방 영상 실패: {exc}", False)
+
+    def _video_lines(self, item, vocal_stem, found, cfg: dict):
+        """자막에 쓸 (시작초, 가사) 목록. 싱크 가사가 있으면 그대로, 없으면 음성으로 맞춘다."""
+        from app import align, karaoke
+
+        if not found:
+            return []
+        if found.get("synced"):
+            return karaoke.parse_lrc(found["synced"])
+        if vocal_stem is None or not Path(vocal_stem).is_file():
+            return []
+        use_gpu = bool(cfg.get("use_gpu", False))
+        if karaoke.whisper_model_name(use_gpu) == "small":
+            self.emit({"type": "notice", "text":
+                       "그래픽 카드 가속 없이 가사 타이밍을 맞춥니다. 곡당 몇 분 걸릴 수 있습니다."})
+        segments = karaoke.whisper_segments(vocal_stem, found["text"], config.MODELS_DIR, use_gpu)
+        onset = align.vocal_onset(vocal_stem)
+        return align.align(found["text"].splitlines(),
+                           align.drop_hallucinations(segments, onset), onset=onset)
+
+    @staticmethod
+    def _fetch_thumbnail(item, song_dir: Path):
+        """유튜브 썸네일을 내려받는다. 로컬 파일이거나 실패하면 None (배경은 단색으로)."""
+        url = getattr(item, "thumbnail_url", "")
+        if not url:
+            return None
+        import urllib.request
+
+        destination = song_dir / ".썸네일.jpg"
+        try:
+            request = urllib.request.Request(url, headers={"User-Agent": "Tube-Vocal-Removal"})
+            with urllib.request.urlopen(request, timeout=20) as response:
+                destination.write_bytes(response.read())
+            return destination
+        except Exception:
+            destination.unlink(missing_ok=True)
+            return None
+
+    @staticmethod
+    def _artist_track(item):
+        """정보 상자에 쓸 (가수, 곡).
+
+        원제목에는 채널명·방송 정보가 붙어 있어 그대로 쓰면 지저분하다. 가사 검색이
+        쓰는 것과 같은 정제 규칙을 태워 가장 짧은 후보를 곡 제목으로 삼는다.
+        """
+        from app.lyrics import clean_title, split_artist_title, title_candidates
+
+        cleaned = clean_title(item.title)
+        artist, track = split_artist_title(cleaned)
+        candidates = title_candidates(track or cleaned)
+        return (artist or ""), (candidates[-1] if candidates else (track or cleaned))
 
     def _run_separation_process(self, src: Path, mode: str, cfg: dict, separation_dir: Path, item_id=None):
         request_path = separation_dir / "worker-request.json"
@@ -705,10 +813,55 @@ class Pipeline:
 
     def model_download_status(self) -> dict:
         installed = {mode: self._model_group_installed(mode) for mode in MODE_MODELS}
+        done = [mode for mode in ALL_MODEL_MODES if installed.get(mode)]
         return {
             "installed": installed,
-            "all_installed": all(installed.get(mode, False) for mode in ALL_MODEL_MODES),
+            "all_installed": len(done) == len(ALL_MODEL_MODES),
+            "count": len(done),
+            "total": len(ALL_MODEL_MODES),
+            "whisper": self.whisper_installed(),
         }
+
+    @staticmethod
+    def whisper_installed() -> bool:
+        """가사 인식 모델이 받아져 있는지. 쓰게 될 크기만 확인한다."""
+        from app import karaoke
+
+        name = karaoke.whisper_model_name(True)
+        return (config.MODELS_DIR / WHISPER_FILES[name]).is_file()
+
+    def download_whisper_model(self, cfg: dict) -> bool:
+        """가사 인식 모델을 내려받는다. 분리 모델과 같은 폴더에 둔다."""
+        if self.running or self.model_downloading:
+            return False
+        if self.whisper_installed():
+            self.emit({"type": "model_download_state", "running": False, "mode": "whisper",
+                       "ok": True, "already_installed": True})
+            return True
+        self._cancel.clear()
+        self.model_downloading = True
+        threading.Thread(target=self._whisper_download_worker, args=(dict(cfg),), daemon=True).start()
+        return True
+
+    def _whisper_download_worker(self, cfg: dict):
+        from app import karaoke
+
+        self.emit({"type": "model_download_state", "running": True, "mode": "whisper", "ok": None})
+        try:
+            config.ensure_dirs()
+            import whisper
+
+            name = karaoke.whisper_model_name(bool(cfg.get("use_gpu", False)))
+            self._log(f"가사 인식 모델({name}) 다운로드를 시작합니다.")
+            whisper.load_model(name, device="cpu", download_root=str(config.MODELS_DIR))
+            self.emit({"type": "model_download_state", "running": False, "mode": "whisper", "ok": True})
+            self._log("가사 인식 모델 다운로드 완료", True)
+        except Exception as exc:
+            self.emit({"type": "model_download_state", "running": False, "mode": "whisper",
+                       "ok": False, "error": str(exc)})
+            self._log(f"가사 인식 모델 다운로드 실패: {exc}", False)
+        finally:
+            self.model_downloading = False
 
     @staticmethod
     def volume_filter(measured_lufs: float, output_format: str) -> str:
@@ -780,7 +933,11 @@ class Pipeline:
             return None
 
     def _save_lyrics(self, item: Item, song_dir: Path, source=None):
-        """가사를 조회해 곡 폴더에 .txt로 저장한다. 실패는 조용히 넘긴다(부가 기능)."""
+        """가사를 조회해 곡 폴더에 .txt로 저장하고 조회 결과를 돌려준다.
+
+        영상 모드가 같은 결과에서 싱크 가사를 꺼내 쓰므로 두 번 조회하지 않는다.
+        실패는 조용히 넘긴다(부가 기능).
+        """
         try:
             from app import lyrics
             duration = self._audio_duration(source) if source else None
@@ -788,8 +945,9 @@ class Pipeline:
             if result:
                 lyrics.save_lyrics(result, song_dir / f"{sanitize_name(item.title)} (가사).txt")
                 self._log(f"가사 저장: {item.title}")
+            return result
         except Exception:
-            pass
+            return None
 
     @staticmethod
     def _stem_label(filename: str) -> str:

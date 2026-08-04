@@ -562,7 +562,7 @@
           <button class="pkey" type="button" data-index="2" aria-label="P3">P3</button>
           <button class="pkey" type="button" data-index="3" aria-label="P4">P4</button>
           <button class="pkey" type="button" data-index="4" aria-label="P5">P5</button>
-          <div class="pkey-blank" aria-hidden="true"></div>
+          <button class="pkey" type="button" data-index="5" aria-label="P6">P6</button>
         </div>
         <div class="program-readout">
           <span class="program-no" id="programNo">P2</span>
@@ -578,6 +578,7 @@
           <option value="karaoke_fast">반주 + 코러스 · 빠른 처리</option>
           <option value="vocals">보컬만 추출</option>
           <option value="demucs">악기별 분리 · 4트랙</option>
+          <option value="karaoke_video">노래방 영상 · MP4</option>
         </select>
       </div>
     </section>
@@ -655,19 +656,20 @@
         </div>
       </div>
 
-      <div class="setting-card">
-        <div class="setting-title">AI 모델 미리 받기</div>
-        <div class="model-setting">
-          <select class="model-screen" id="modelDownloadSelect" aria-label="다운로드할 AI 모델">
-            <option value="best">모든 보컬 제거 · 추천 (약 900MB)</option>
-            <option value="karaoke">코러스 유지 (약 1.7GB)</option>
-            <option value="karaoke_fast">코러스 유지 · 빠른 처리</option>
-            <option value="demucs">악기별 분리 · Demucs</option>
-          </select>
-          <button class="mini-btn gold" id="downloadModelBtn" type="button">미리 받기</button>
-          <button class="mini-btn" id="downloadAllModelsBtn" type="button">전체 모델</button>
+      <div class="setting-card setting-toggle">
+        <div class="copy">
+          <div class="setting-title">AI 모델 미리 받기</div>
+          <div class="setting-desc" id="modelDownloadStatus">안 받아도 쓸 때 자동으로 내려받습니다.</div>
         </div>
-        <div class="setting-desc" id="modelDownloadStatus">미리 받아두면 첫 변환이 즉시 시작됩니다.</div>
+        <button class="mini-btn gold" id="downloadAllModelsBtn" type="button">전체 받기 · 2.6GB</button>
+      </div>
+
+      <div class="setting-card setting-toggle">
+        <div class="copy">
+          <div class="setting-title">노래방 가사 인식 · P6 전용</div>
+          <div class="setting-desc" id="whisperStatus">싱크 가사가 없는 곡의 자막 타이밍을 맞춥니다.</div>
+        </div>
+        <button class="mini-btn" id="downloadWhisperBtn" type="button">받기 · 1.4GB</button>
       </div>
 
       <div class="setting-card">
@@ -709,6 +711,7 @@
     { value:"karaoke_fast", name:"반주 + 코러스", spec:"코러스 유지 · 빠른 처리", description:"가벼운 모델로 메인 보컬만 빠르게 줄입니다. 코러스는 남습니다." },
     { value:"vocals", name:"보컬만 추출", spec:"VOCAL · 보컬만 출력", description:"반주를 줄이고 보컬 중심의 스템만 결과 폴더에 저장합니다." },
     { value:"demucs", name:"악기별 분리", spec:"4 STEMS · 악기별 출력", description:"보컬, 드럼, 베이스와 나머지 악기를 네 개의 파일로 나눕니다." },
+    { value:"karaoke_video", name:"노래방 영상", spec:"MP4 · 가사 자막", description:"보컬을 지운 반주에 가사 자막을 얹어 MP4 영상까지 만듭니다." },
   ];
   const FORMATS = ["MP3", "WAV", "FLAC"];
   const MP3_QUALITIES = ["128k", "192k", "256k", "320k"];
@@ -913,28 +916,23 @@
       case "log": addLog((ev.ok ? "✔ " : "") + ev.text, ev.ok ? "ok" : (ev.text.includes("실패") ? "err" : "")); break;
       case "progress":
         setProgress(ev.stage, ev.pct);
-        if ($("downloadModelBtn").disabled && ev.stage.startsWith("모델 다운로드")) {
+        if ($("downloadAllModelsBtn").disabled && ev.stage.startsWith("모델 다운로드")) {
           $("modelDownloadStatus").textContent = ev.stage + (ev.pct == null ? "" : ` · ${ev.pct}%`);
         }
         break;
       case "model_download_state": {
-        const btn = $("downloadModelBtn");
-        const allBtn = $("downloadAllModelsBtn");
+        const whisper = ev.mode === "whisper";
+        const btn = whisper ? $("downloadWhisperBtn") : $("downloadAllModelsBtn");
+        const label = whisper ? $("whisperStatus") : $("modelDownloadStatus");
         btn.disabled = ev.running;
-        allBtn.disabled = ev.running;
-        btn.textContent = ev.running ? "받는 중" : "미리 받기";
-        allBtn.textContent = ev.running && ev.mode === "all" ? "받는 중" : "전체 모델";
+        btn.textContent = ev.running ? "받는 중" : (whisper ? "받기 · 1.4GB" : "전체 받기 · 2.6GB");
         if (ev.running) {
-          $("modelDownloadStatus").textContent = ev.mode === "all" && ev.index
-            ? `전체 모델 받는 중 (${ev.index}/${ev.total})`
-            : "모델 정보 확인 중";
+          label.textContent = ev.index ? `받는 중 (${ev.index}/${ev.total})` : "모델 정보 확인 중";
         } else if (ev.ok) {
-          $("modelDownloadStatus").textContent = ev.already_installed
-            ? "이미 설치된 모델입니다 · 다시 받지 않았습니다."
-            : (ev.mode === "all" ? "전체 모델 다운로드 완료" : "다운로드 완료 · 이 모델은 바로 사용할 수 있습니다.");
+          label.textContent = ev.already_installed ? "이미 설치되어 있습니다." : "다운로드 완료";
           refreshModelDownloadStatus();
         } else {
-          $("modelDownloadStatus").textContent = "다운로드 실패 · 진행 상황 로그를 확인하세요.";
+          label.textContent = "다운로드 실패 · 진행 상황 로그를 확인하세요.";
         }
         break;
       }
@@ -1179,17 +1177,21 @@
     updateEngineControls();
   }
 
-  let modelInstallStatus = { installed: {}, all_installed: false };
+  let modelInstallStatus = { installed: {}, all_installed: false, count: 0, total: 0, whisper: false };
   function showModelDownloadStatus() {
-    const mode = $("modelDownloadSelect").value;
-    const installed = Boolean(modelInstallStatus.installed && modelInstallStatus.installed[mode]);
-    $("downloadModelBtn").disabled = installed;
-    $("downloadModelBtn").textContent = installed ? "설치됨" : "미리 받기";
-    $("downloadAllModelsBtn").disabled = Boolean(modelInstallStatus.all_installed);
-    $("downloadAllModelsBtn").textContent = modelInstallStatus.all_installed ? "모두 설치됨" : "전체 모델";
-    $("modelDownloadStatus").textContent = installed
-      ? "이 모델은 이미 설치되어 있습니다 · 다시 다운로드하지 않습니다."
-      : "미리 받아두면 첫 변환이 즉시 시작됩니다.";
+    const done = Boolean(modelInstallStatus.all_installed);
+    $("downloadAllModelsBtn").disabled = done;
+    $("downloadAllModelsBtn").textContent = done ? "모두 설치됨" : "전체 받기 · 2.6GB";
+    $("modelDownloadStatus").textContent = done
+      ? "모두 설치됨 · 첫 변환이 즉시 시작됩니다."
+      : `${modelInstallStatus.total || 4}개 중 ${modelInstallStatus.count || 0}개 설치됨 · 안 받아도 쓸 때 자동으로 내려받습니다.`;
+
+    const whisper = Boolean(modelInstallStatus.whisper);
+    $("downloadWhisperBtn").disabled = whisper;
+    $("downloadWhisperBtn").textContent = whisper ? "설치됨" : "받기 · 1.4GB";
+    $("whisperStatus").textContent = whisper
+      ? "설치됨 · 싱크 가사가 없는 곡도 자막이 맞춰집니다."
+      : "설치 안 됨 · 싱크 가사가 없는 곡의 자막 타이밍을 맞춥니다.";
   }
   async function refreshModelDownloadStatus() {
     if (!apiReady) return;
@@ -1213,11 +1215,10 @@
   $("changeFolderBtn").addEventListener("click", async () => {
     $("folderPath").textContent = await api().choose_output_dir();
   });
-  $("downloadModelBtn").addEventListener("click", async () => {
-    const started = await api().download_model($("modelDownloadSelect").value);
+  $("downloadWhisperBtn").addEventListener("click", async () => {
+    const started = await api().download_whisper_model();
     if (!started) toast("다른 작업이 진행 중입니다.");
   });
-  $("modelDownloadSelect").addEventListener("change", showModelDownloadStatus);
   $("downloadAllModelsBtn").addEventListener("click", async () => {
     const started = await api().download_all_models();
     if (!started) toast("다른 작업이 진행 중입니다.");
