@@ -583,9 +583,18 @@ class Pipeline:
         if vocal_stem is None or not Path(vocal_stem).is_file():
             return []
         use_gpu = bool(cfg.get("use_gpu", False))
-        if karaoke.whisper_model_name(use_gpu) == "small":
+        name = karaoke.whisper_model_name(use_gpu)
+        if name == "small":
             self.emit({"type": "notice", "text":
                        "그래픽 카드 가속 없이 가사 타이밍을 맞춥니다. 곡당 몇 분 걸릴 수 있습니다."})
+        # 설정에서 미리 받지 않았으면 여기서 받는다. 진행률은 곡 진행 막대에 보여준다.
+        karaoke.ensure_model(
+            name, config.MODELS_DIR,
+            on_progress=self._percent_reporter(lambda pct: self.emit({
+                "type": "progress", "id": item.id,
+                "stage": "가사 인식 모델 받는 중", "pct": pct})),
+            should_cancel=self._cancel.is_set,
+        )
         segments = karaoke.whisper_segments(vocal_stem, found["text"], config.MODELS_DIR, use_gpu)
         onset = align.vocal_onset(vocal_stem)
         return align.align(found["text"].splitlines(),
@@ -848,12 +857,16 @@ class Pipeline:
 
         self.emit({"type": "model_download_state", "running": True, "mode": "whisper", "ok": None})
         try:
-            config.ensure_dirs()
-            import whisper
-
+            config.ensure_dirs(cfg)
             name = karaoke.whisper_model_name(bool(cfg.get("use_gpu", False)))
             self._log(f"가사 인식 모델({name}) 다운로드를 시작합니다.")
-            whisper.load_model(name, device="cpu", download_root=str(config.MODELS_DIR))
+            karaoke.ensure_model(
+                name, config.MODELS_DIR,
+                on_progress=self._percent_reporter(lambda pct: self.emit({
+                    "type": "model_download_state", "running": True, "mode": "whisper",
+                    "ok": None, "pct": pct})),
+                should_cancel=self._cancel.is_set,
+            )
             self.emit({"type": "model_download_state", "running": False, "mode": "whisper", "ok": True})
             self._log("가사 인식 모델 다운로드 완료", True)
         except Exception as exc:
@@ -862,6 +875,20 @@ class Pipeline:
             self._log(f"가사 인식 모델 다운로드 실패: {exc}", False)
         finally:
             self.model_downloading = False
+
+    @staticmethod
+    def _percent_reporter(send):
+        """1%가 올라갈 때만 알리는 콜백을 만든다. 1.4GB를 1MB마다 알리면 큐가 넘친다."""
+        last = [None]
+
+        def report(received: int, total: int):
+            pct = round(received / total * 100) if total else None
+            if pct is None or pct == last[0]:
+                return
+            last[0] = pct
+            send(pct)
+
+        return report
 
     @staticmethod
     def volume_filter(measured_lufs: float, output_format: str) -> str:

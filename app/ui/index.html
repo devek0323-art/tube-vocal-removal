@@ -927,7 +927,8 @@
         btn.disabled = ev.running;
         btn.textContent = ev.running ? "받는 중" : (whisper ? "받기 · 1.4GB" : "전체 받기 · 2.6GB");
         if (ev.running) {
-          label.textContent = ev.index ? `받는 중 (${ev.index}/${ev.total})` : "모델 정보 확인 중";
+          if (ev.pct != null) label.textContent = `받는 중 · ${ev.pct}%`;
+          else label.textContent = ev.index ? `받는 중 (${ev.index}/${ev.total})` : "모델 정보 확인 중";
         } else if (ev.ok) {
           label.textContent = ev.already_installed ? "이미 설치되어 있습니다." : "다운로드 완료";
           refreshModelDownloadStatus();

@@ -24,6 +24,28 @@ from app.pipeline import (
 from app.platform_support import cuda_arch_supported
 
 
+class FakeDownload:
+    """urlopen 대신 쓸 응답. 컨텍스트 매니저와 read(n)만 있으면 된다."""
+
+    def __init__(self, payload: bytes):
+        self._data = payload
+        self._position = 0
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+    def info(self):
+        return {"Content-Length": str(len(self._data))}
+
+    def read(self, size):
+        chunk = self._data[self._position:self._position + size]
+        self._position += len(chunk)
+        return chunk
+
+
 class FakeSeparator:
     def __init__(self):
         self.output_dir = ""
@@ -280,6 +302,55 @@ class CoreTests(unittest.TestCase):
                     {"start": 25.0, "end": 28.0, "text": "진짜"}]
         kept = drop_hallucinations(segments, onset=18.5)
         self.assertEqual([s["text"] for s in kept], ["진짜"])
+
+    def test_whisper_download_button_path_runs_to_the_end(self):
+        """받기 버튼이 타는 길을 통째로 지난다. 첫 줄에서 ensure_dirs 인자가 빠져 죽었었다."""
+        events = []
+        pipeline = Pipeline(events.append)
+        cfg = dict(config.DEFAULTS)
+        with tempfile.TemporaryDirectory() as tmp:
+            cfg["output_dir"] = tmp
+            with mock.patch("app.karaoke.ensure_model") as ensure:
+                pipeline._whisper_download_worker(cfg)
+        self.assertTrue(ensure.called)
+        states = [e for e in events if e["type"] == "model_download_state"]
+        self.assertTrue(states[-1]["ok"], states[-1].get("error"))
+        self.assertFalse(pipeline.model_downloading)
+
+    def test_whisper_model_download_verifies_the_hash(self):
+        """위스퍼가 주는 다운로드 함수는 진행바를 stderr에 그린다. 창 모드 exe에는
+        stderr가 없어서 그 자리에서 죽는다. 그래서 직접 받고 해시로 검사한다."""
+        from app import karaoke
+
+        payload = b"weights" * 1000
+        digest = hashlib.sha256(payload).hexdigest()
+        with tempfile.TemporaryDirectory() as tmp:
+            models = Path(tmp)
+            fake = SimpleNamespace(_MODELS={"small": f"https://example.invalid/{digest}/small.pt"})
+            seen = []
+            with mock.patch.dict(sys.modules, {"whisper": fake}), \
+                    mock.patch.object(karaoke.urllib.request, "urlopen",
+                                      return_value=FakeDownload(payload)):
+                path = karaoke.ensure_model("small", models,
+                                            on_progress=lambda got, total: seen.append(got))
+            self.assertEqual(path, models / "small.pt")
+            self.assertEqual(path.read_bytes(), payload)
+            self.assertTrue(seen)
+            self.assertFalse(list(models.glob("*.part")))
+
+    def test_whisper_model_download_discards_a_corrupted_file(self):
+        """반쯤 받다 끊긴 파일이 남으면 이후 실행이 그걸 모델이라 믿는다."""
+        from app import karaoke
+
+        with tempfile.TemporaryDirectory() as tmp:
+            models = Path(tmp)
+            fake = SimpleNamespace(_MODELS={"small": f"https://example.invalid/{'0' * 64}/small.pt"})
+            with mock.patch.dict(sys.modules, {"whisper": fake}), \
+                    mock.patch.object(karaoke.urllib.request, "urlopen",
+                                      return_value=FakeDownload(b"broken")):
+                with self.assertRaises(RuntimeError):
+                    karaoke.ensure_model("small", models)
+            self.assertEqual(list(models.iterdir()), [])
 
     def test_karaoke_video_mode_shares_the_instrumental_model(self):
         """P6은 P1으로 분리한 뒤 영상을 만든다. 모델이 갈리면 결과가 달라진다."""

@@ -1,6 +1,9 @@
 # 노래방 영상 만들기 — 가사 타이밍을 만들고 ASS 자막을 얹어 MP4로 굽는다
+import hashlib
+import os
 import re
 import subprocess
+import urllib.request
 from pathlib import Path
 
 from app.cover import FONT
@@ -20,6 +23,47 @@ def parse_lrc(text):
             lines.append((int(minute) * 60 + float(second), body))
     lines.sort(key=lambda item: item[0])
     return lines
+
+
+def ensure_model(name, models_dir, on_progress=None, should_cancel=None):
+    """위스퍼 체크포인트를 받아 둔다. 이미 있으면 그대로 쓴다.
+
+    whisper.load_model에 맡기면 안 된다. 그쪽 다운로드는 진행바를 stderr에 그리는데
+    창 모드로 빌드한 exe에는 stderr가 없어서 받자마자 죽는다. 직접 받으면
+    진행률도 알려줄 수 있다.
+    """
+    import whisper
+
+    target = Path(models_dir) / f"{name}.pt"
+    if target.is_file():
+        return target
+    url = whisper._MODELS[name]
+    expected = url.split("/")[-2]  # 내려받을 파일의 SHA-256이 주소에 박혀 있다.
+    target.parent.mkdir(parents=True, exist_ok=True)
+    partial = target.with_name(target.name + ".part")
+    digest = hashlib.sha256()
+    received = 0
+    try:
+        with urllib.request.urlopen(url, timeout=60) as source, partial.open("wb") as output:
+            total = int(source.info().get("Content-Length") or 0)
+            while True:
+                if should_cancel is not None and should_cancel():
+                    raise RuntimeError("취소되었습니다.")
+                chunk = source.read(1024 * 1024)
+                if not chunk:
+                    break
+                output.write(chunk)
+                digest.update(chunk)
+                received += len(chunk)
+                if on_progress is not None:
+                    on_progress(received, total)
+        if digest.hexdigest() != expected:
+            raise RuntimeError("받은 파일이 손상되었습니다. 다시 시도해 주세요.")
+        os.replace(partial, target)
+    except BaseException:
+        partial.unlink(missing_ok=True)
+        raise
+    return target
 
 
 def whisper_segments(vocal_path, prompt, models_dir, use_gpu):
