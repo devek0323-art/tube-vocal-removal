@@ -304,6 +304,14 @@ class CoreTests(unittest.TestCase):
         kept = drop_hallucinations(segments, onset=18.5)
         self.assertEqual([s["text"] for s in kept], ["진짜"])
 
+    def test_both_specs_bundle_what_the_karaoke_video_needs(self):
+        """맥 스펙에 위스퍼와 폰트가 빠져 있었다. 빠지면 P6이 그 OS에서만 죽는다."""
+        root = Path(__file__).resolve().parent.parent
+        for name in ("TubeVocalRemoval.spec", "TubeVocalRemoval-mac.spec"):
+            text = (root / name).read_text(encoding="utf-8")
+            self.assertIn('collect_all("whisper")', text, name)
+            self.assertIn("Pretendard.ttf", text, name)
+
     def test_thumbnail_is_looked_up_again_when_the_prefetch_missed_it(self):
         """붙여넣자마자 시작하거나 캐시를 재사용하면 썸네일 주소가 비어 있다.
         제목은 다운로드 파일명에서 채워지므로 제목만 맞고 배경만 빠진다."""
