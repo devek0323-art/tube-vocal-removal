@@ -227,6 +227,20 @@ class CoreTests(unittest.TestCase):
         self.assertIn(f'#define MyAppVersion "{APP_VERSION}"', text)
         self.assertIn(f'#define MyRuntimeRevision "{RUNTIME_REVISION}"', text)
 
+    def test_volume_fix_only_applies_gain(self):
+        """볼륨 보정은 게인만 건다. 구간별 게인을 다시 타면 조용한 곡의 잔재가 도드라진다."""
+        from app.pipeline import LOUDNESS_TARGET_LUFS
+
+        quiet = Pipeline.volume_filter(-19.2, "WAV")
+        self.assertIn(f"volume={LOUDNESS_TARGET_LUFS - -19.2:.3f}dB", quiet)
+        self.assertIn("level=false", quiet)          # 리미터의 자동 메이크업을 끈다
+        self.assertNotIn("dynaudnorm", quiet)
+        self.assertNotIn("loudnorm", quiet)
+        # MP3는 디코딩 시 피크가 솟으므로 실링이 더 낮아야 한다.
+        self.assertIn("limit=0.7943", Pipeline.volume_filter(-14.0, "MP3"))
+        self.assertIn("limit=0.8913", Pipeline.volume_filter(-14.0, "WAV"))
+        self.assertIn("limit=0.8913", Pipeline.volume_filter(-14.0, "FLAC"))
+
     def test_exe_version_resource_matches_app_version(self):
         """exe에 새겨지는 버전. 여기를 빠뜨리면 앱은 2.07인데 파일 속성은 옛 버전이 된다."""
         from app.version import APP_VERSION

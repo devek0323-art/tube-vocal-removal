@@ -52,10 +52,13 @@ MODEL_REQUIRED_FILES = {
     "demucs": ("htdemucs.yaml", "955717e8-8726e21a.th"),
 }
 
-# 볼륨 보정 1단계 — 곡 안의 출렁임을 구간 단위로 평탄화 (최대 6배 증폭 제한)
-VOLUME_FLATTEN_FILTER = "dynaudnorm=f=1000:g=31:m=6:p=0.9,alimiter=limit=0.95"
-# 볼륨 보정 2단계 — 최종 음량을 유튜브/스포티파이 기준으로 고정
-LOUDNESS_TARGET = "loudnorm=I=-14:TP=-1:LRA=11"
+# 볼륨 보정 — 곡 전체에 같은 게인을 한 번만 걸고 넘치는 피크만 리미터로 잡는다.
+# 예전에는 dynaudnorm으로 구간마다 게인을 다시 계산했는데, 조용한 스템에서 구간별
+# 편차가 20dB까지 벌어져 분리 잔재가 도드라졌다. 다이내믹은 건드리지 않는다.
+LOUDNESS_TARGET_LUFS = -14.0
+LOUDNESS_MEASURE = "loudnorm=I=-14:TP=-1:LRA=11:print_format=json"
+# MP3·AAC는 디코딩 시 원본보다 피크가 솟으므로 실링을 더 낮게 잡는다.
+PEAK_CEILING_DB = {"MP3": -2.0, "FLAC": -1.0, "WAV": -1.0}
 
 AUDIO_EXTS = frozenset({".mp3", ".wav", ".flac", ".m4a", ".opus", ".ogg", ".webm", ".aac"})
 _id_counter = itertools.count(1)
@@ -707,25 +710,26 @@ class Pipeline:
             "all_installed": all(installed.get(mode, False) for mode in ALL_MODEL_MODES),
         }
 
+    @staticmethod
+    def volume_filter(measured_lufs: float, output_format: str) -> str:
+        """측정한 음량으로 걸 필터. 게인은 곡 전체에 한 번, 리미터는 넘치는 피크에만."""
+        gain = LOUDNESS_TARGET_LUFS - measured_lufs
+        ceiling = PEAK_CEILING_DB.get(output_format.upper(), -1.0)
+        # level=false — 켜 두면 리미터가 제멋대로 메이크업 게인을 얹는다.
+        return f"volume={gain:.3f}dB,alimiter=limit={10 ** (ceiling / 20):.4f}:level=false"
+
     def _normalize_and_encode(self, source: Path, destination: Path, cfg: dict):
-        """구간 평탄화 후 -14 LUFS로 맞춰 최종 형식으로 1회 인코딩한다."""
+        """-14 LUFS로 맞춰 최종 형식으로 1회 인코딩한다. 다이내믹은 건드리지 않는다."""
         ffmpeg = str(FFMPEG)
         measure = subprocess.run(
             [ffmpeg, "-hide_banner", "-nostats", "-i", str(source),
-             "-af", f"{VOLUME_FLATTEN_FILTER},{LOUDNESS_TARGET}:print_format=json",
-             "-f", "null", "-"],
+             "-af", LOUDNESS_MEASURE, "-f", "null", "-"],
             capture_output=True, text=True, encoding="utf-8", errors="replace", **hidden_process_kwargs(),
         )
         match = re.search(r"\{[^{}]+\}", measure.stderr[-3000:], re.S)
         if measure.returncode != 0 or not match:
             raise RuntimeError("볼륨 보정 측정에 실패했습니다.")
         metrics = json.loads(match.group(0))
-        loudnorm = (
-            f"{LOUDNESS_TARGET}:linear=true"
-            f":measured_I={metrics['input_i']}:measured_TP={metrics['input_tp']}"
-            f":measured_LRA={metrics['input_lra']}:measured_thresh={metrics['input_thresh']}"
-            f":offset={metrics['target_offset']}"
-        )
         output_format = cfg.get("output_format", "WAV").upper()
         codec = {
             "MP3": ["-c:a", "libmp3lame", "-b:a", cfg.get("mp3_bitrate", "320k")],
@@ -734,7 +738,8 @@ class Pipeline:
         }.get(output_format, ["-c:a", "pcm_s16le"])
         encode = subprocess.run(
             [ffmpeg, "-hide_banner", "-nostats", "-y", "-i", str(source),
-             "-af", f"{VOLUME_FLATTEN_FILTER},{loudnorm}", "-ar", "44100", *codec, str(destination)],
+             "-af", self.volume_filter(float(metrics["input_i"]), output_format),
+             "-ar", "44100", *codec, str(destination)],
             capture_output=True, **hidden_process_kwargs(),
         )
         if encode.returncode != 0 or not destination.is_file():
