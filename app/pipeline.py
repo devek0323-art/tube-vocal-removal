@@ -167,6 +167,11 @@ class Pipeline:
             threading.Thread(target=self._resolve_url_titles, args=(new_items,), daemon=True).start()
         return added
 
+    def title_pending(self, item: Item) -> bool:
+        """제목을 아직 못 받았는지. 이 상태로 가사를 찾으면 엉뚱한 걸 찾는다."""
+        return item.kind == "url" and (item.title == "제목 확인 중"
+                                       or item.title.endswith("(제목 확인 실패)"))
+
     def _resolve_url_titles(self, items):
         """Resolve YouTube titles without blocking the UI or downloading audio."""
         for item in items:
@@ -283,6 +288,14 @@ class Pipeline:
         targets = [item for item in self.items
                    if item.status in {"wait", "failed", "canceled"} and item.want_lyrics
                    and not item.lyrics_checked]
+        # 제목 확인 스레드가 아직 안 끝났을 수 있다. 그 상태로 찾으면 "제목 확인 중"으로
+        # 검색하게 되므로 잠깐 기다린다.
+        deadline = time.time() + 20
+        while any(item.title == "제목 확인 중" for item in targets) and time.time() < deadline:
+            time.sleep(0.3)
+        pending = [item for item in targets if self.title_pending(item)]
+        if pending:
+            self._resolve_url_titles(pending)      # 실패했던 것은 여기서 한 번 더 시도한다
         if not targets:
             return self._lyrics_report()
         threads = []
@@ -297,6 +310,10 @@ class Pipeline:
     def _lookup_lyrics(self, item: Item):
         from app import lyrics
 
+        if self.title_pending(item):
+            # 제목을 끝내 못 받았다. 그 문구로 검색하면 엉뚱한 가사가 붙는다.
+            item.lyrics, item.lyrics_checked = None, True
+            return
         try:
             item.lyrics = lyrics.fetch_lyrics(self._search_title(item),
                                               duration=item.duration or None)
@@ -315,7 +332,10 @@ class Pipeline:
                 continue
             if item.lyrics or not item.lyrics_checked:
                 continue
-            artist, track = split_artist_title(clean_title(self._search_title(item)))
+            if self.title_pending(item):
+                artist, track = "", ""      # 제목을 못 받았으니 채워 줄 게 없다
+            else:
+                artist, track = split_artist_title(clean_title(self._search_title(item)))
             missing.append({"id": item.id, "title": item.title,
                             "artist": artist or "", "track": track or "",
                             "duration": item.duration})

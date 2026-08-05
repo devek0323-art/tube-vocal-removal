@@ -413,6 +413,27 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(report[0]["track"], "Monologue")
         self.assertEqual(report[0]["duration"], 215)
 
+    def test_hidden_panes_actually_hide(self):
+        """.modal-body가 display:grid라 hidden 속성만으로는 안 숨는다.
+        두 탭이 동시에 보이면 모달이 길어지고 무엇을 하라는 화면인지 알 수 없다."""
+        ui = Path(__file__).resolve().parent.parent / "app" / "ui" / "index.html"
+        self.assertIn("[hidden] { display: none !important; }", ui.read_text(encoding="utf-8"))
+
+    def test_lyrics_are_not_searched_with_a_placeholder_title(self):
+        """제목 확인 전에 시작을 누르면 '제목 확인 중'으로 가사를 찾게 된다."""
+        pipeline = Pipeline(lambda event: None)
+        item = Item("url", "https://youtu.be/x", "제목 확인 중")
+        pipeline.items.append(item)
+        self.assertTrue(pipeline.title_pending(item))
+        with mock.patch("app.lyrics.fetch_lyrics") as fetch:
+            pipeline._lookup_lyrics(item)
+        self.assertFalse(fetch.called)
+        self.assertTrue(item.lyrics_checked)
+        # 채워 줄 가수·곡명이 없으므로 빈 칸으로 물어본다.
+        report = pipeline._lyrics_report()
+        self.assertEqual(report[0]["artist"], "")
+        self.assertEqual(report[0]["track"], "")
+
     def test_whisper_download_button_path_runs_to_the_end(self):
         """받기 버튼이 타는 길을 통째로 지난다. 첫 줄에서 ensure_dirs 인자가 빠져 죽었었다."""
         events = []

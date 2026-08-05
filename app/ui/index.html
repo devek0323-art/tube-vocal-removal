@@ -34,13 +34,18 @@
   * { box-sizing: border-box; }
 
   /* 레트로 스크롤바 */
-  .queue::-webkit-scrollbar, .log::-webkit-scrollbar { width: 9px; }
-  .queue::-webkit-scrollbar-track, .log::-webkit-scrollbar-track { background: #16120e; border-left: 1px solid var(--edge); }
-  .queue::-webkit-scrollbar-thumb, .log::-webkit-scrollbar-thumb {
+  .queue::-webkit-scrollbar, .log::-webkit-scrollbar,
+  .modal::-webkit-scrollbar, .results::-webkit-scrollbar { width: 9px; }
+  .queue::-webkit-scrollbar-track, .log::-webkit-scrollbar-track,
+  .modal::-webkit-scrollbar-track, .results::-webkit-scrollbar-track { background: #16120e; border-left: 1px solid var(--edge); }
+  .queue::-webkit-scrollbar-thumb, .log::-webkit-scrollbar-thumb,
+  .modal::-webkit-scrollbar-thumb, .results::-webkit-scrollbar-thumb {
     background: linear-gradient(180deg, #4c4335, #3a3328);
     border: 1px solid #0e0b08;
     border-radius: 4px;
   }
+  /* .modal-body가 display:grid라 hidden 속성만으로는 안 숨는다. */
+  [hidden] { display: none !important; }
 
   html, body { height: 100%; }
   body {
