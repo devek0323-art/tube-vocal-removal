@@ -22,14 +22,27 @@ _NOISE = re.compile(
 )
 _BRACKETS = re.compile(r"[\[\(（【][^\]\)）】]*[\]\)）】]")
 _SEPARATORS = (" - ", " – ", " — ", " _ ", "_")
+# 위 구분자가 없을 때만 쓰는 보조 구분자. `Rainbow | Since You Been Gone`처럼
+# 세로줄로 가수와 곡을 나누는 제목이 있다.
+_WEAK_SEPARATORS = (" | ", " ｜ ", "|", "｜")
 
 # 제목 뒤에 붙는 채널명·영문 병기·시리즈명·공연장을 자르는 지점
-_CUTS = (" - ", " – ", " — ", "｜", "|", " / ", "／", "～", "~", " @ ", "@")
+# `ㅣ`(U+3163)는 세로줄이 아니라 한글 자모다. 국내 채널이 구분선으로 자주 쓴다.
+_CUTS = (" - ", " – ", " — ", "｜", "|", "ㅣ", "│", " / ", "／", "～", "~", " @ ", "@",
+         "♬", "♪", "#", " l ", " I ")
+# 맨 앞의 트랙 번호 (`3. 두 사람`)
+_TRACK_NUMBER = re.compile(r"^\d{1,2}\s*[.)]\s+")
+# 괄호 밖은 영문, 안은 한글인 병기 표기 (`Seung-Chul Lee(이승철)`)
+_ROMANIZED = re.compile(r"[A-Za-z0-9][A-Za-z0-9 .&'’\-]*\(\s*([^()]*[가-힣][^()]*?)\s*\)")
+# 제목 안에 따옴표로 묶인 곡명 (`소녀시대 'Gee' MV`). 단어에 붙은 아포스트로피
+# (`Girls'`)를 여는 따옴표로 오인하지 않도록 앞뒤가 글자가 아닐 때만 본다.
+_QUOTED = re.compile(r"(?<![A-Za-z가-힣])['‘’\"“”]([^'‘’\"“”]{2,40})['‘’\"“”](?![A-Za-z가-힣])")
 # 곡 제목 끝에 붙는 부가 정보 낱말 (연도, No.2, full.ver 등)
 _META_WORD = re.compile(
     r"^(19|20)\d{2}년?$"
     r"|^(no|vol|pt|part|ver|version|disc|track)\d*$"
     r"|^(full|official|live|inst|mr|audio|video|mv|lyric|lyrics|가사|반주|음원|자막)$"
+    r"|^(special|clip|teaser|stage|performance|remaster|remastered|edit|hq|hd|ost)$"
     r"|^\d{1,3}$",
     re.I,
 )
@@ -50,11 +63,29 @@ def clean_title(raw: str) -> str:
 
 def split_artist_title(cleaned: str):
     """'가수 - 제목' 형태면 (가수, 제목)으로, 아니면 (None, 제목)으로 나눈다."""
-    for sep in _SEPARATORS:
+    for sep in _SEPARATORS + _WEAK_SEPARATORS:
         if sep in cleaned:
             artist, title = cleaned.split(sep, 1)
-            return artist.strip(), title.strip()
+            if artist.strip() and title.strip():
+                return artist.strip(), title.strip()
     return None, cleaned.strip()
+
+
+def hangul_variant(raw: str) -> str:
+    """영문 병기 제목에서 괄호 안 한글만 남긴 변형을 만든다. 없으면 빈 문자열.
+
+    `Seung-Chul Lee(이승철) - The western sky(서쪽 하늘)` → `이승철 - 서쪽 하늘`.
+    LRCLIB의 국내곡은 한글 제목으로 올라와 있어 로마자로는 찾지 못한다.
+    """
+    text = unicodedata.normalize("NFC", str(raw))
+    swapped = _ROMANIZED.sub(lambda m: m.group(1), text)
+    return swapped.strip() if swapped != text else ""
+
+
+def quoted_titles(raw: str):
+    """제목 안에 따옴표로 묶인 부분. 구분자가 없는 제목에서 곡명을 건진다."""
+    text = _BRACKETS.sub(" ", unicodedata.normalize("NFC", str(raw)))
+    return [m.strip() for m in _QUOTED.findall(text) if m.strip()]
 
 
 def _is_meta(token: str) -> bool:
@@ -75,6 +106,7 @@ def title_candidates(title: str, limit: int = 4):
         # 아포스트로피는 지운다. 공백으로 바꾸면 `You've`가 `You ve`로 쪼개진다.
         text = re.sub(f"[{re.escape(_APOSTROPHES)}]", "", text)
         text = re.sub(f"[{re.escape(_QUOTES)}]", " ", text)
+        text = _TRACK_NUMBER.sub("", text.strip())
         text = re.sub(r"\s+", " ", text).strip(_TRIM)
         if len(text) >= 2 and text not in found:
             found.append(text)
@@ -220,8 +252,10 @@ def _lrclib_pick(rows, artist, title, duration, strict, hint=None):
         plain = row.get("plainLyrics")
         if synced:
             return {"text": _strip_timestamps(synced), "synced": synced, "source": "LRCLIB"}
+        # plainLyrics에도 타임스탬프가 박혀 있는 항목이 있다. 그대로 두면 가사 파일과
+        # 자막에 [00:19.90]이 섞여 나간다.
         if plain:
-            return {"text": plain, "synced": None, "source": "LRCLIB"}
+            return {"text": _strip_timestamps(plain), "synced": None, "source": "LRCLIB"}
     return None
 
 
@@ -281,16 +315,50 @@ def fetch_lyrics(title, duration=None, artist=None):
     제목 뒤 군더더기를 잘라낸 후보를 차례로 시도한다. 가수를 붙인 검색이 먼저지만,
     제목에서 가수를 잘못 뽑았을 수 있으므로 가수 없이도 한 번 더 시도한다.
     """
-    cleaned = clean_title(title)
-    parsed_artist, parsed_title = split_artist_title(cleaned)
-    artist = artist or parsed_artist
-    for candidate in title_candidates(parsed_title or cleaned):
-        for name in ([artist, None] if artist else [None]):
-            found = (_fetch_lrclib(name, candidate, duration, hint=cleaned)
-                     or _fetch_kr(name, candidate))
-            if found:
-                return found
+    for name, candidate, hint in _attempts(title, artist):
+        found = (_fetch_lrclib(name, candidate, duration, hint=hint)
+                 or _fetch_kr(name, candidate))
+        if found:
+            return found
     return None
+
+
+def _attempts(title, artist=None):
+    """(가수, 곡명, 원제목) 조합을 그럴듯한 순서로 만든다.
+
+    유튜브 제목은 형태가 제각각이다. 가수와 곡이 뒤집혀 있거나, 곡명이 따옴표
+    안에만 있거나, 한글 곡이 로마자로 적혀 있다. 하나의 규칙으로 다 잡을 수
+    없으므로 해석을 여러 개 만들어 차례로 시도한다.
+    """
+    seen = set()
+    order = []
+
+    def push(name, track, hint):
+        for candidate in title_candidates(track):
+            key = ((name or "").strip().lower(), candidate.lower())
+            if key not in seen:
+                seen.add(key)
+                order.append((name, candidate, hint))
+
+    for raw in [title, hangul_variant(title)]:
+        if not raw:
+            continue
+        cleaned = clean_title(raw)
+        parsed_artist, parsed_title = split_artist_title(cleaned)
+        name = artist or parsed_artist
+        # 1) 가수 - 곡
+        if name:
+            push(name, parsed_title or cleaned, cleaned)
+        # 2) 따옴표 안이 곡명인 제목 (`소녀시대 'Gee' MV`)
+        for quoted in quoted_titles(raw):
+            push(name, quoted, cleaned)
+            push(None, quoted, cleaned)
+        # 3) 가수 없이 제목만
+        push(None, parsed_title or cleaned, cleaned)
+        # 4) 순서가 뒤집힌 제목 (`우주를 줄게 - 볼빨간사춘기`)
+        if parsed_artist and parsed_title:
+            push(parsed_title, parsed_artist, cleaned)
+    return order
 
 
 def search_candidates(artist, track, limit=8):
@@ -322,7 +390,7 @@ def search_candidates(artist, track, limit=8):
             "artist": row.get("artistName") or "",
             "duration": int(row.get("duration") or 0),
             "hasSynced": bool(synced),
-            "result": {"text": _strip_timestamps(synced) if synced else plain,
+            "result": {"text": _strip_timestamps(synced or plain),
                        "synced": synced or None, "source": "LRCLIB"},
         })
         if len(found) >= limit:
