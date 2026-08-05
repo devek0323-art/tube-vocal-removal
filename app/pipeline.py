@@ -65,6 +65,11 @@ MODEL_REQUIRED_FILES = {
 # CUDA가 있으면 medium, 없으면 small을 쓴다.
 WHISPER_FILES = {"medium": "medium.pt", "small": "small.pt"}
 
+# 싱크 가사(LRC)를 그대로 쓰려면 곡 길이가 이 안에서 맞아야 한다. 라이브·리믹스는
+# 인트로 길이가 달라 스튜디오 기준 타이밍이 통째로 밀린다. 자동 조회는 원래 이 검사를
+# 하는데(v2.05), 사용자가 직접 고르는 경로에서도 같은 기준을 적용한다.
+LRC_DURATION_TOLERANCE = 4
+
 # 볼륨 보정 — 곡 전체에 같은 게인을 한 번만 걸고 넘치는 피크만 리미터로 잡는다.
 # 예전에는 dynaudnorm으로 구간마다 게인을 다시 계산했는데, 조용한 스템에서 구간별
 # 편차가 20dB까지 벌어져 분리 잔재가 도드라졌다. 다이내믹은 건드리지 않는다.
@@ -296,6 +301,10 @@ class Pipeline:
         pending = [item for item in targets if self.title_pending(item)]
         if pending:
             self._resolve_url_titles(pending)      # 실패했던 것은 여기서 한 번 더 시도한다
+        for item in targets:
+            if item.kind == "file" and not item.duration:
+                # 길이를 알아야 다른 버전의 가사를 걸러낼 수 있다. 파일은 지금 잴 수 있다.
+                item.duration = int(self._audio_duration(item.source) or 0)
         if not targets:
             return self._lyrics_report()
         threads = []
@@ -341,23 +350,54 @@ class Pipeline:
                             "duration": item.duration})
         return missing
 
-    def search_lyrics(self, artist: str, track: str) -> list:
+    def search_lyrics(self, item_id: int, artist: str, track: str) -> list:
         """가사 후보 목록. 팝업의 검색 버튼이 부른다."""
         from app import lyrics
 
         found = lyrics.search_candidates(artist, track)
         # UI로는 가사 본문을 보내지 않는다. 고른 뒤 파이썬 쪽에서 꺼내 쓴다.
         self._lyrics_candidates = found
-        return [{"index": index, "track": row["track"], "artist": row["artist"],
-                 "duration": row["duration"], "hasSynced": row["hasSynced"]}
-                for index, row in enumerate(found)]
+        song = int(self._item_duration(item_id) or 0)
+        rows = []
+        for index, row in enumerate(found):
+            fits = self._duration_fits(song, row["duration"])
+            rows.append({"index": index, "track": row["track"], "artist": row["artist"],
+                         "duration": row["duration"],
+                         # 길이가 다르면 타이밍을 못 쓴다. 쓸 수 있을 때만 싱크라고 표시한다.
+                         "hasSynced": bool(row["hasSynced"] and fits),
+                         "lengthOff": bool(song and row["duration"] and not fits)})
+        return rows
+
+    def _item_duration(self, item_id: int) -> int:
+        for item in self.items:
+            if item.id == int(item_id):
+                return item.duration
+        return 0
+
+    @staticmethod
+    def _duration_fits(song: int, candidate: int) -> bool:
+        """둘 중 하나라도 모르면 판단하지 않는다(통과)."""
+        if not song or not candidate:
+            return True
+        return abs(int(song) - int(candidate)) <= LRC_DURATION_TOLERANCE
 
     def choose_lyrics(self, item_id: int, index: int) -> bool:
-        """검색 결과에서 고른 가사를 곡에 물린다."""
+        """검색 결과에서 고른 가사를 곡에 물린다.
+
+        길이가 다른 버전이면 타이밍은 버리고 글자만 쓴다. 라이브 영상에 스튜디오
+        음원 기준 LRC를 그대로 얹으면 자막이 통째로 밀린다.
+        """
         found = getattr(self, "_lyrics_candidates", [])
         if not (0 <= int(index) < len(found)):
             return False
-        return self._attach_lyrics(item_id, dict(found[int(index)]["result"]))
+        row = found[int(index)]
+        result = dict(row["result"])
+        song = int(self._item_duration(item_id) or 0)
+        if result.get("synced") and not self._duration_fits(song, row["duration"]):
+            result["synced"] = None
+            self._log(f"고른 가사가 {row['duration']}초짜리라 이 영상({song}초)과 길이가 다릅니다. "
+                      "타이밍은 음성으로 다시 맞춥니다.")
+        return self._attach_lyrics(item_id, result)
 
     def set_lyrics_text(self, item_id: int, text: str) -> bool:
         """직접 붙여넣은 가사를 곡에 물린다. 타이밍은 음성 인식으로 맞춘다."""

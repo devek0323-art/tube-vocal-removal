@@ -230,8 +230,8 @@ class Api:
     def prepare_lyrics(self):
         return self._pipeline.prepare_lyrics(self._cfg)
 
-    def search_lyrics(self, artist, track):
-        return self._pipeline.search_lyrics(artist, track)
+    def search_lyrics(self, item_id, artist, track):
+        return self._pipeline.search_lyrics(int(item_id), artist, track)
 
     def choose_lyrics(self, item_id, index):
         return self._pipeline.choose_lyrics(int(item_id), int(index))

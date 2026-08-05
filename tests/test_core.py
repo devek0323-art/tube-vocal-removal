@@ -413,6 +413,41 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(report[0]["track"], "Monologue")
         self.assertEqual(report[0]["duration"], 215)
 
+    def test_manually_picked_lyrics_keep_timing_only_when_lengths_match(self):
+        """라이브 영상(286초)에 스튜디오 LRC(279초)를 얹으면 자막이 통째로 밀린다.
+        자동 조회는 원래 길이를 대조하는데, 직접 고르는 경로가 그걸 건너뛰었다."""
+        pipeline = Pipeline(lambda event: None)
+        live = Item("url", "https://youtu.be/x", "버즈 - 겁쟁이 [라이브]")
+        live.duration = 286
+        pipeline.items.append(live)
+        candidates = [
+            {"track": "겁쟁이", "artist": "버즈", "duration": 279, "hasSynced": True,
+             "result": {"text": "가사", "synced": "[00:29.89] 미안합니다", "source": "LRCLIB"}},
+            {"track": "겁쟁이 (Live)", "artist": "버즈", "duration": 285, "hasSynced": True,
+             "result": {"text": "가사", "synced": "[00:18.00] 미안합니다", "source": "LRCLIB"}},
+        ]
+        with mock.patch("app.lyrics.search_candidates", return_value=candidates):
+            rows = pipeline.search_lyrics(live.id, "버즈", "겁쟁이")
+        # 길이가 7초 다른 후보는 싱크로 표시하지 않는다.
+        self.assertFalse(rows[0]["hasSynced"])
+        self.assertTrue(rows[0]["lengthOff"])
+        self.assertTrue(rows[1]["hasSynced"])
+        self.assertFalse(rows[1]["lengthOff"])
+
+        pipeline.choose_lyrics(live.id, 0)
+        self.assertIsNone(live.lyrics["synced"])      # 타이밍은 버리고 글자만 쓴다
+        self.assertEqual(live.lyrics["text"], "가사")
+
+        pipeline.choose_lyrics(live.id, 1)
+        self.assertEqual(live.lyrics["synced"], "[00:18.00] 미안합니다")
+
+    def test_lyrics_length_check_passes_when_a_length_is_unknown(self):
+        """로컬 파일처럼 길이를 모르면 판단하지 않는다. 막으면 쓸 수 있는 가사도 버린다."""
+        self.assertTrue(Pipeline._duration_fits(0, 279))
+        self.assertTrue(Pipeline._duration_fits(286, 0))
+        self.assertTrue(Pipeline._duration_fits(286, 283))
+        self.assertFalse(Pipeline._duration_fits(286, 279))
+
     def test_hidden_panes_actually_hide(self):
         """.modal-body가 display:grid라 hidden 속성만으로는 안 숨는다.
         두 탭이 동시에 보이면 모달이 길어지고 무엇을 하라는 화면인지 알 수 없다."""

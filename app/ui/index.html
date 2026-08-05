@@ -1303,9 +1303,10 @@
     box.innerHTML = '<div class="empty">찾는 중…</div>';
     lyricPick = -1;
     updateLyricApply();
+    const item = lyricQueue[lyricIndex];
     let rows = [];
     try {
-      rows = (await api().search_lyrics($("lyricArtist").value, $("lyricTrack").value)) || [];
+      rows = (await api().search_lyrics(item.id, $("lyricArtist").value, $("lyricTrack").value)) || [];
     } catch (err) {
       rows = [];
     }
@@ -1314,7 +1315,6 @@
       return;
     }
     box.innerHTML = "";
-    const item = lyricQueue[lyricIndex];
     for (const row of rows) {
       const div = document.createElement("div");
       div.className = "result";
@@ -1329,6 +1329,7 @@
       const badge = document.createElement("span");
       badge.className = row.hasSynced ? "badge" : "badge plain";
       badge.textContent = row.hasSynced ? "싱크" : "가사만";
+      if (row.lengthOff) badge.title = "이 영상과 길이가 달라 타이밍은 쓰지 않습니다.";
       div.append(rt, badge);
       div.addEventListener("click", () => {
         for (const other of box.children) other.classList.remove("pick");
