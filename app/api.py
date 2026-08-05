@@ -227,6 +227,18 @@ class Api:
     def set_item_lyrics(self, item_id, enabled):
         return self._pipeline.set_item_lyrics(int(item_id), bool(enabled))
 
+    def prepare_lyrics(self):
+        return self._pipeline.prepare_lyrics(self._cfg)
+
+    def search_lyrics(self, artist, track):
+        return self._pipeline.search_lyrics(artist, track)
+
+    def choose_lyrics(self, item_id, index):
+        return self._pipeline.choose_lyrics(int(item_id), int(index))
+
+    def set_lyrics_text(self, item_id, text):
+        return self._pipeline.set_lyrics_text(int(item_id), text)
+
     def start(self, mode):
         return self._pipeline.start(mode, self._cfg)
 
@@ -243,7 +255,7 @@ class Api:
         return self._pipeline.download_whisper_model(self._cfg)
 
     def get_model_download_status(self):
-        return self._pipeline.model_download_status()
+        return self._pipeline.model_download_status(self._cfg)
 
     def open_folder(self, path):
         target = path or self._cfg["output_dir"]

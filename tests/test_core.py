@@ -344,6 +344,75 @@ class CoreTests(unittest.TestCase):
                 self.assertIsNone(pipeline._fetch_thumbnail(item, Path(tmp)))
             self.assertFalse(probe.called)
 
+    def test_reserved_windows_names_get_a_prefix(self):
+        """제목이 CON·NUL이면 폴더를 만들 수 없어 곡 전체가 실패한다."""
+        self.assertEqual(sanitize_name("CON"), "_CON")
+        self.assertEqual(sanitize_name("nul.mp3"), "_nul.mp3")
+        self.assertEqual(sanitize_name("COM1"), "_COM1")
+        self.assertEqual(sanitize_name("CONCERT"), "CONCERT")      # 예약명이 아니다
+
+    def test_video_encoder_never_picks_nvenc_off_windows(self):
+        """맥에서 nvenc를 고르면 영상이 안 만들어지는데 곡은 완료로 표시된다."""
+        from app import karaoke
+
+        with mock.patch.object(karaoke, "IS_WINDOWS", True), \
+                mock.patch.object(karaoke, "IS_MACOS", False):
+            self.assertIn("h264_nvenc", karaoke._codecs(True)[0])
+        with mock.patch.object(karaoke, "IS_WINDOWS", False), \
+                mock.patch.object(karaoke, "IS_MACOS", True):
+            self.assertNotIn("h264_nvenc", karaoke._codecs(True)[0])
+            self.assertIn("h264_videotoolbox", karaoke._codecs(True)[0])
+        # 가속이 실패해도 소프트웨어 인코더로 한 번 더 시도한다.
+        self.assertIn("libx264", karaoke._codecs(True)[-1])
+        self.assertEqual(len(karaoke._codecs(False)), 1)
+
+    def test_whisper_install_check_follows_the_gpu_setting(self):
+        """CUDA가 있어도 GPU를 끄면 small을 쓴다. 여기가 어긋나면 변환 중에 1.4GB를 받는다."""
+        pipeline = Pipeline(lambda event: None)
+        with mock.patch("app.karaoke.whisper_model_name", side_effect=lambda gpu: "medium" if gpu else "small") as name:
+            pipeline.whisper_installed({"use_gpu": False})
+            self.assertEqual(name.call_args[0][0], False)
+            pipeline.whisper_installed({"use_gpu": True})
+            self.assertEqual(name.call_args[0][0], True)
+
+    def test_start_is_blocked_while_models_download(self):
+        """둘이 같은 취소 이벤트와 프로세스 슬롯을 공유해 서로 끊는다."""
+        pipeline = Pipeline(lambda event: None)
+        pipeline.items.append(Item("file", __file__, "sample.wav"))
+        pipeline.model_downloading = True
+        self.assertFalse(pipeline.start("karaoke", dict(config.DEFAULTS)))
+        self.assertFalse(pipeline.running)
+
+    def test_prepared_lyrics_are_reused_instead_of_looked_up_again(self):
+        """시작할 때 확보한 가사를 변환에서 다시 조회하면 사용자가 고른 것이 버려진다."""
+        pipeline = Pipeline(lambda event: None)
+        item = Item("url", "https://youtu.be/x", "어떤 곡")
+        pipeline.items.append(item)
+        self.assertTrue(pipeline.set_lyrics_text(item.id, " 첫 줄 \n\n 둘째 줄 "))
+        self.assertEqual(item.lyrics["text"], "첫 줄\n둘째 줄")
+        with tempfile.TemporaryDirectory() as tmp:
+            with mock.patch("app.lyrics.fetch_lyrics") as fetch, \
+                    mock.patch("app.lyrics.save_lyrics") as save:
+                result = pipeline._save_lyrics(item, Path(tmp))
+            self.assertFalse(fetch.called)
+            self.assertTrue(save.called)
+        self.assertEqual(result["source"], "직접 입력")
+
+    def test_missing_lyrics_are_reported_with_a_parsed_artist_and_track(self):
+        """팝업의 가수·곡명 칸을 채우려면 제목을 정리해 나눠 줘야 한다."""
+        pipeline = Pipeline(lambda event: None)
+        found = Item("url", "https://youtu.be/a", "아이유 - 밤편지")
+        found.lyrics, found.lyrics_checked = {"text": "가사"}, True
+        missing = Item("url", "https://youtu.be/b", "버즈 - Monologue (Official Video)")
+        missing.lyrics_checked = True
+        missing.duration = 215
+        pipeline.items.extend([found, missing])
+        report = pipeline._lyrics_report()
+        self.assertEqual([row["id"] for row in report], [missing.id])
+        self.assertEqual(report[0]["artist"], "버즈")
+        self.assertEqual(report[0]["track"], "Monologue")
+        self.assertEqual(report[0]["duration"], 215)
+
     def test_whisper_download_button_path_runs_to_the_end(self):
         """받기 버튼이 타는 길을 통째로 지난다. 첫 줄에서 ensure_dirs 인자가 빠져 죽었었다."""
         events = []

@@ -77,10 +77,16 @@ AUDIO_EXTS = frozenset({".mp3", ".wav", ".flac", ".m4a", ".opus", ".ogg", ".webm
 _id_counter = itertools.count(1)
 
 
+# Windows가 장치명으로 예약해 둔 이름. 폴더로 만들 수 없다.
+_RESERVED_NAMES = re.compile(r"(?i)^(CON|PRN|AUX|NUL|COM[1-9]|LPT[1-9])(\.|$)")
+
+
 def sanitize_name(name: str) -> str:
     """Windows에서 폴더/파일명으로 쓸 수 없는 문자를 제거한다."""
     name = unicodedata.normalize("NFC", str(name))
     cleaned = re.sub(r'[\\/:*?"<>|]+', "_", name).strip(" .")
+    if _RESERVED_NAMES.match(cleaned):
+        cleaned = "_" + cleaned
     return cleaned[:120] or "제목없음"
 
 
@@ -110,6 +116,9 @@ class Item:
         self.detected_key = ""      # 감지된 원곡 키 (예: 'C# minor'), 오디오 확보 후 채워짐
         self.want_lyrics = True     # 이 곡의 가사 저장 여부
         self.thumbnail_url = ""     # 노래방 영상 배경으로 쓸 썸네일 (로컬 파일은 없음)
+        self.duration = 0           # 초. 가사 후보를 길이로 대조할 때 쓴다
+        self.lyrics = None          # 확보한 가사 {text, synced, source}
+        self.lyrics_checked = False  # 조회를 이미 마쳤는지 (변환 중 재조회 방지)
 
     def to_dict(self):
         return {
@@ -191,6 +200,8 @@ class Pipeline:
                 if item in self.items and item.status == "wait":
                     item.title = title
                     item.thumbnail_url = str(info.get("thumbnail") or "")
+                    # 가사 후보를 길이로 대조하려면 오디오를 받기 전에 길이를 알아야 한다.
+                    item.duration = int(info.get("duration") or 0)
                     self._emit_queue()
                     self._log(f"제목 확인: {title}", True)
             except (OSError, subprocess.SubprocessError, json.JSONDecodeError, RuntimeError):
@@ -261,8 +272,95 @@ class Pipeline:
                 pass
         threading.Thread(target=worker, daemon=True).start()
 
+    def prepare_lyrics(self, cfg: dict) -> list:
+        """대기 중인 곡의 가사를 미리 조회한다. 분리 시작을 누른 직후에 부른다.
+
+        변환 도중에 조회하면 못 찾았을 때 물어볼 방법이 없다. 대기열이 멈추기 때문이다.
+        여기서 미리 확보해 두고 변환할 때는 그대로 쓴다.
+        """
+        if self.running or not cfg.get("download_lyrics", True):
+            return []
+        targets = [item for item in self.items
+                   if item.status in {"wait", "failed", "canceled"} and item.want_lyrics
+                   and not item.lyrics_checked]
+        if not targets:
+            return self._lyrics_report()
+        threads = []
+        for item in targets:
+            thread = threading.Thread(target=self._lookup_lyrics, args=(item,), daemon=True)
+            thread.start()
+            threads.append(thread)
+        for thread in threads:
+            thread.join(timeout=40)
+        return self._lyrics_report()
+
+    def _lookup_lyrics(self, item: Item):
+        from app import lyrics
+
+        try:
+            item.lyrics = lyrics.fetch_lyrics(self._search_title(item),
+                                              duration=item.duration or None)
+        except Exception as exc:
+            item.lyrics = None
+            self._log(f"가사를 가져오지 못했습니다: {exc}", False)
+        item.lyrics_checked = True
+
+    def _lyrics_report(self) -> list:
+        """가사를 못 찾은 곡 목록. UI가 이걸 보고 팝업을 띄운다."""
+        from app.lyrics import clean_title, split_artist_title
+
+        missing = []
+        for item in self.items:
+            if item.status not in {"wait", "failed", "canceled"} or not item.want_lyrics:
+                continue
+            if item.lyrics or not item.lyrics_checked:
+                continue
+            artist, track = split_artist_title(clean_title(self._search_title(item)))
+            missing.append({"id": item.id, "title": item.title,
+                            "artist": artist or "", "track": track or "",
+                            "duration": item.duration})
+        return missing
+
+    def search_lyrics(self, artist: str, track: str) -> list:
+        """가사 후보 목록. 팝업의 검색 버튼이 부른다."""
+        from app import lyrics
+
+        found = lyrics.search_candidates(artist, track)
+        # UI로는 가사 본문을 보내지 않는다. 고른 뒤 파이썬 쪽에서 꺼내 쓴다.
+        self._lyrics_candidates = found
+        return [{"index": index, "track": row["track"], "artist": row["artist"],
+                 "duration": row["duration"], "hasSynced": row["hasSynced"]}
+                for index, row in enumerate(found)]
+
+    def choose_lyrics(self, item_id: int, index: int) -> bool:
+        """검색 결과에서 고른 가사를 곡에 물린다."""
+        found = getattr(self, "_lyrics_candidates", [])
+        if not (0 <= int(index) < len(found)):
+            return False
+        return self._attach_lyrics(item_id, dict(found[int(index)]["result"]))
+
+    def set_lyrics_text(self, item_id: int, text: str) -> bool:
+        """직접 붙여넣은 가사를 곡에 물린다. 타이밍은 음성 인식으로 맞춘다."""
+        body = "\n".join(line.strip() for line in str(text or "").splitlines() if line.strip())
+        if not body:
+            return False
+        return self._attach_lyrics(item_id, {"text": body, "synced": None, "source": "직접 입력"})
+
+    def _attach_lyrics(self, item_id: int, result: dict) -> bool:
+        for item in self.items:
+            if item.id == int(item_id):
+                item.lyrics = result
+                item.lyrics_checked = True
+                self._log(f"가사 지정: {item.title}", True)
+                return True
+        return False
+
     def start(self, mode: str, cfg: dict) -> bool:
         if self.running:
+            return False
+        if self.model_downloading:
+            # 둘이 같은 취소 이벤트와 프로세스 슬롯을 쓴다. 같이 돌면 서로 끊는다.
+            self._log("모델을 받는 중입니다. 끝나면 시작해 주세요.", False)
             return False
         targets = [item for item in self.items if item.status in {"wait", "failed", "canceled"}]
         if not targets:
@@ -547,30 +645,36 @@ class Pipeline:
         from app import karaoke
         from app.cover import compose
 
+        # 자막과 글꼴은 임시 폴더에서 다룬다. ffmpeg 필터에 경로를 넘기지 않으려면
+        # 작업 디렉터리를 옮겨야 하는데, 결과 폴더를 작업 디렉터리로 쓸 수는 없다.
+        work = config.TEMP_DIR / f"video_{item.id}"
         try:
+            work.mkdir(parents=True, exist_ok=True)
             self.emit({"type": "progress", "id": item.id, "stage": "가사 맞추는 중", "pct": 100})
             duration = self._audio_duration(audio) or 0.0
+            if duration <= 0:
+                raise RuntimeError("반주 길이를 읽지 못했습니다.")
             lines = self._video_lines(item, vocal_stem, found, cfg)
             artist, track = self._artist_track(item)
 
+            self._check_canceled()
             self.emit({"type": "progress", "id": item.id, "stage": "영상 만드는 중", "pct": 100})
-            background = song_dir / ".배경.png"
-            thumbnail = self._fetch_thumbnail(item, song_dir)
+            background = work / "배경.png"
+            thumbnail = self._fetch_thumbnail(item, work)
             compose(thumbnail, artist, track, background)
-            if thumbnail:
-                thumbnail.unlink(missing_ok=True)
-            subtitle = None
-            if lines:
-                subtitle = karaoke.write_ass(lines, song_dir / ".가사.ass", duration)
+            subtitle = karaoke.write_ass(lines, work / "가사.ass", duration) if lines else None
             destination = song_dir / f"{sanitize_name(item.title)} (노래방).mp4"
             karaoke.render(FFMPEG, audio, background, subtitle, destination, duration,
-                           gpu=bool(cfg.get("use_gpu", False)))
-            background.unlink(missing_ok=True)
-            if subtitle:
-                Path(subtitle).unlink(missing_ok=True)
+                           gpu=bool(cfg.get("use_gpu", False)), on_proc=self._track_proc)
             self._log(f"노래방 영상 저장: {item.title}")
+        except CanceledError:
+            raise
         except Exception as exc:
             self._log(f"노래방 영상 실패: {exc}", False)
+        finally:
+            with self._proc_lock:
+                self._proc = None
+            shutil.rmtree(work, ignore_errors=True)
 
     def _video_lines(self, item, vocal_stem, found, cfg: dict):
         """자막에 쓸 (시작초, 가사) 목록. 싱크 가사가 있으면 그대로, 없으면 음성으로 맞춘다."""
@@ -840,7 +944,7 @@ class Pipeline:
                    and (config.MODELS_DIR / filename).stat().st_size > 0
                    for filename in required)
 
-    def model_download_status(self) -> dict:
+    def model_download_status(self, cfg: dict = None) -> dict:
         installed = {mode: self._model_group_installed(mode) for mode in MODE_MODELS}
         done = [mode for mode in ALL_MODEL_MODES if installed.get(mode)]
         return {
@@ -848,22 +952,26 @@ class Pipeline:
             "all_installed": len(done) == len(ALL_MODEL_MODES),
             "count": len(done),
             "total": len(ALL_MODEL_MODES),
-            "whisper": self.whisper_installed(),
+            "whisper": self.whisper_installed(cfg),
         }
 
     @staticmethod
-    def whisper_installed() -> bool:
-        """가사 인식 모델이 받아져 있는지. 쓰게 될 크기만 확인한다."""
+    def whisper_installed(cfg: dict = None) -> bool:
+        """가사 인식 모델이 받아져 있는지. 실제로 쓰게 될 크기만 확인한다.
+
+        GPU 설정에 따라 medium과 small로 갈리므로 설정을 봐야 한다. 이걸 무시하면
+        설정 화면은 '설치됨'인데 변환 도중에 1.4GB를 새로 받는 일이 생긴다.
+        """
         from app import karaoke
 
-        name = karaoke.whisper_model_name(True)
+        name = karaoke.whisper_model_name(bool((cfg or {}).get("use_gpu", False)))
         return (config.MODELS_DIR / WHISPER_FILES[name]).is_file()
 
     def download_whisper_model(self, cfg: dict) -> bool:
         """가사 인식 모델을 내려받는다. 분리 모델과 같은 폴더에 둔다."""
         if self.running or self.model_downloading:
             return False
-        if self.whisper_installed():
+        if self.whisper_installed(cfg):
             self.emit({"type": "model_download_state", "running": False, "mode": "whisper",
                        "ok": True, "already_installed": True})
             return True
@@ -983,17 +1091,22 @@ class Pipeline:
         """가사를 조회해 곡 폴더에 .txt로 저장하고 조회 결과를 돌려준다.
 
         영상 모드가 같은 결과에서 싱크 가사를 꺼내 쓰므로 두 번 조회하지 않는다.
-        실패는 조용히 넘긴다(부가 기능).
+        시작할 때 미리 확보했거나 사용자가 직접 지정한 가사가 있으면 그것을 쓴다.
         """
         try:
             from app import lyrics
-            duration = self._audio_duration(source) if source else None
-            result = lyrics.fetch_lyrics(self._search_title(item), duration=duration)
+            result = item.lyrics
+            if result is None and not item.lyrics_checked:
+                duration = self._audio_duration(source) if source else None
+                result = lyrics.fetch_lyrics(self._search_title(item), duration=duration)
+                item.lyrics, item.lyrics_checked = result, True
             if result:
                 lyrics.save_lyrics(result, song_dir / f"{sanitize_name(item.title)} (가사).txt")
                 self._log(f"가사 저장: {item.title}")
             return result
-        except Exception:
+        except Exception as exc:
+            # P6에서는 부가 기능 실패가 아니라 자막이 통째로 빠지는 일이다. 알려야 한다.
+            self._log(f"가사를 가져오지 못했습니다: {exc}", False)
             return None
 
     @staticmethod
@@ -1024,6 +1137,14 @@ class Pipeline:
         with self._proc_lock:
             if self._proc is proc:
                 self._proc = None
+
+    def _track_proc(self, proc):
+        """중단 버튼이 이 프로세스도 끌 수 있게 등록한다."""
+        with self._proc_lock:
+            self._proc = proc
+        if self._cancel.is_set():
+            # 등록 직전에 중단을 눌렀으면 cancel()이 이 프로세스를 못 봤다.
+            self._terminate_process_tree(proc)
 
     @staticmethod
     def _terminate_process_tree(proc):

@@ -7,6 +7,7 @@ ART_TOP = 47
 REFLECT = 70                # 반사 높이
 PLATE_TOP = 372
 PLATE_MIN_W = 380
+PLATE_MAX_W = 1100          # 1280 화면에서 양옆 여백을 남기는 최대 폭
 BACKDROP_TARGET = 34        # 배경 평균 밝기(0~255). 흰 썸네일이 와도 가사가 읽히게 맞춘다.
 
 FONT = Path(__file__).resolve().parent / "assets" / "Pretendard.ttf"
@@ -79,6 +80,16 @@ def _reflection(art):
     return flipped
 
 
+def _fit(draw, text, font, limit):
+    """폭에 맞을 때까지 뒤를 잘라 …로 끝낸다."""
+    text = str(text or "")
+    if draw.textlength(text, font=font) <= limit:
+        return text
+    while text and draw.textlength(text + "…", font=font) > limit:
+        text = text[:-1]
+    return (text + "…") if text else ""
+
+
 def _plate(canvas, artist, track):
     """곡 정보 — 채움 없이 테두리만. 뒤에 넓은 그림자를 깔아 배경에 묻히지 않게."""
     from PIL import Image, ImageDraw, ImageFilter
@@ -86,8 +97,12 @@ def _plate(canvas, artist, track):
     big, small = _font(36, 720), _font(17, 450)
     layer = canvas.convert("RGBA")
     draw = ImageDraw.Draw(layer, "RGBA")
+    # 긴 제목은 줄여서 카드 안에 넣는다. 안 그러면 카드가 화면보다 넓어져 양끝이 잘린다.
+    track = _fit(draw, track, big, PLATE_MAX_W - 108)
+    artist = _fit(draw, artist, small, PLATE_MAX_W - 108)
     width = max(PLATE_MIN_W, int(max(draw.textlength(track, font=big),
                                      draw.textlength(artist, font=small))) + 108)
+    width = min(width, PLATE_MAX_W)
     box = ((W - width) // 2, PLATE_TOP, (W + width) // 2, PLATE_TOP + 104)
 
     glow = Image.new("RGBA", layer.size, (0, 0, 0, 0))

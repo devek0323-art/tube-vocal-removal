@@ -275,6 +275,43 @@ def fetch_lyrics(title, duration=None, artist=None):
     return None
 
 
+def search_candidates(artist, track, limit=8):
+    """가수·곡명으로 후보를 모아 돌려준다. 자동 조회가 실패했을 때 직접 고르는 용도다.
+
+    fetch_lyrics는 길이·제목을 대조해 하나만 고르지만, 여기서는 거르지 않는다.
+    이미 자동으로 못 찾은 상황이라 사람이 보고 판단하는 편이 낫다.
+    """
+    import json
+
+    track = str(track or "").strip()
+    artist = str(artist or "").strip()
+    if not track and not artist:
+        return []
+    params = {"artist_name": artist, "track_name": track} if artist and track else {"q": track or artist}
+    try:
+        rows = json.loads(_http_get(f"{LRCLIB_BASE}/search?{urllib.parse.urlencode(params)}"))
+    except Exception:
+        return []
+    found = []
+    for row in rows or []:
+        if not isinstance(row, dict):
+            continue
+        synced, plain = row.get("syncedLyrics"), row.get("plainLyrics")
+        if not (synced or plain):
+            continue
+        found.append({
+            "track": row.get("trackName") or "",
+            "artist": row.get("artistName") or "",
+            "duration": int(row.get("duration") or 0),
+            "hasSynced": bool(synced),
+            "result": {"text": _strip_timestamps(synced) if synced else plain,
+                       "synced": synced or None, "source": "LRCLIB"},
+        })
+        if len(found) >= limit:
+            break
+    return found
+
+
 def save_lyrics(result, destination):
     """조회 결과를 텍스트(.txt) 파일로만 저장한다."""
     from pathlib import Path

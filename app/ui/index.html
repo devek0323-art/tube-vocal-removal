@@ -405,6 +405,37 @@
   }
   .switch input:focus-visible + .track { outline: 1px solid rgba(226, 168, 63, 0.75); outline-offset: 3px; }
 
+  /* 가사 찾기 모달 */
+  .lyric-modal { max-width: 470px; }
+  .lyric-count { margin-left: 10px; color: #a08f6b; font-size: 11px; font-weight: 400; letter-spacing: 0; }
+  .tabs { display: flex; border-bottom: 1px solid #100d09; }
+  .tab { flex: 1; padding: 8px 0; text-align: center; font: 700 11px var(--font); color: var(--dim);
+    background: none; border: none; border-bottom: 2px solid transparent; cursor: pointer; }
+  .tab.on { color: var(--amber-hi); border-bottom-color: var(--amber); }
+  .src-title { font-size: 11px; color: var(--dim); }
+  .src-title b { display: block; color: var(--cream); font-size: 12px; font-weight: 400; margin-top: 3px;
+    overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .lyric-query { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: end; }
+  .field label { display: block; font: 700 10px var(--mono); letter-spacing: .1em; color: #8d8270; margin-bottom: 5px; }
+  .field input, .field textarea { width: 100%; border: 1px solid #080604; border-radius: 3px; background: #12100d;
+    color: #d9cfb4; padding: 8px 10px; font: 12px var(--font); box-shadow: inset 0 2px 4px #000; }
+  .field input:focus, .field textarea:focus { outline: none; border-color: #6f5a2a; }
+  .field textarea { min-height: 104px; resize: vertical; font: 11.5px/1.6 var(--font); }
+  .results { border: 1px solid #100d09; border-radius: 3px; background: #191512; min-height: 60px; max-height: 168px; overflow-y: auto; }
+  .results .empty { padding: 20px 10px; text-align: center; color: var(--dim); font-size: 11px; }
+  .result { display: flex; align-items: center; gap: 9px; padding: 8px 10px; border-bottom: 1px solid #221d18; cursor: pointer; }
+  .result:last-child { border-bottom: none; }
+  .result:hover { background: #241f19; }
+  .result.pick { background: #2b2419; box-shadow: inset 2px 0 0 var(--amber); }
+  .result .rt { flex: 1; min-width: 0; }
+  .result .rt b { display: block; font-size: 12px; font-weight: 600; color: var(--cream); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  .result .rt span { font-size: 10.5px; color: var(--dim); }
+  .badge { flex-shrink: 0; font: 700 9px var(--mono); letter-spacing: .08em; padding: 2px 6px; border-radius: 2px; border: 1px solid #3d5a2c; color: var(--green); }
+  .badge.plain { border-color: #4a4033; color: var(--dim); }
+  .hint { color: var(--dim); font-size: 10.5px; line-height: 1.5; }
+  .hint b, .state-line b { color: var(--muted); font-weight: 700; }
+  .state-line { padding: 7px 10px; border-left: 2px solid #5a4a2a; background: #241f19; color: var(--muted); font-size: 11px; }
+
   .modal-actions { display: flex; justify-content: flex-end; gap: 8px; padding: 0 13px 14px; }
   .modal-actions .mini-btn { padding: 8px 16px; font-size: 11.5px; }
 
@@ -618,6 +649,36 @@
     </div>
   </section>
 </main>
+
+<!-- 가사 찾기 — 분리 시작 시 가사를 못 찾은 곡마다 뜬다 -->
+<div class="overlay" id="lyricOverlay">
+  <div class="modal lyric-modal" role="dialog" aria-modal="true" aria-label="가사 찾기">
+    <div class="modal-head">가사 찾기<span class="lyric-count" id="lyricCount"></span><button class="modal-close" id="lyricCloseX" type="button" aria-label="건너뛰기">×</button></div>
+    <div class="tabs">
+      <button class="tab on" id="lyricTabSearch" type="button">검색</button>
+      <button class="tab" id="lyricTabPaste" type="button">직접 붙여넣기</button>
+    </div>
+    <div class="modal-body" id="lyricSearchPane">
+      <div class="src-title">원본 제목<b id="lyricSource"></b></div>
+      <div class="lyric-query">
+        <div class="field"><label>가수</label><input id="lyricArtist" type="text" spellcheck="false"></div>
+        <div class="field"><label>곡명</label><input id="lyricTrack" type="text" spellcheck="false"></div>
+        <button class="mini-btn" id="lyricSearchBtn" type="button">검색</button>
+      </div>
+      <div class="results" id="lyricResults"></div>
+      <div class="hint"><b>싱크</b>는 시간 정보가 있는 가사입니다. P6에서 음성 인식을 건너뛰어 더 빠르고 정확합니다. <b>가사만</b>이면 분리한 보컬로 타이밍을 맞춥니다.</div>
+    </div>
+    <div class="modal-body" id="lyricPastePane" hidden>
+      <div class="src-title">원본 제목<b id="lyricSource2"></b></div>
+      <div class="field"><label>가사</label><textarea id="lyricText" spellcheck="false" placeholder="가사를 줄바꿈 그대로 붙여넣으세요."></textarea></div>
+      <div class="state-line">타이밍은 분리한 보컬을 음성 인식에 태워 맞춥니다. <b>글자는 넣은 그대로</b> 나갑니다.</div>
+    </div>
+    <div class="modal-actions">
+      <button class="mini-btn" id="lyricSkipBtn" type="button">건너뛰기</button>
+      <button class="mini-btn gold" id="lyricApplyBtn" type="button" disabled>이 가사 쓰기</button>
+    </div>
+  </div>
+</div>
 
 <!-- 설정 모달 -->
 <div class="overlay" id="overlay">
@@ -1158,8 +1219,145 @@
       return;
     }
     logEl.textContent = "";
+    // 가사는 변환 전에 확보해 둔다. 변환 중에 물어보면 대기열이 거기서 멈춘다.
+    const btn = $("startBtn");
+    const label = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "가사 확인 중";
+    let missing = [];
+    try {
+      missing = (await api().prepare_lyrics()) || [];
+    } catch (err) {
+      missing = [];
+    }
+    btn.disabled = false;
+    btn.textContent = label;
+    if (missing.length) await askForLyrics(missing);
     const ok = await api().start($("modeSelect").value);
     if (!ok) toast("먼저 곡을 추가하세요.");
+  });
+
+  // ── 가사 찾기 모달 ───────────────────────
+  const lyricOverlay = $("lyricOverlay");
+  let lyricQueue = [];
+  let lyricIndex = 0;
+  let lyricPick = -1;
+  let lyricResolve = null;
+
+  function askForLyrics(missing) {
+    lyricQueue = missing;
+    lyricIndex = 0;
+    showLyricItem();
+    return new Promise((resolve) => { lyricResolve = resolve; });
+  }
+
+  function closeLyricModal() {
+    lyricOverlay.classList.remove("open");
+    if (lyricResolve) { const done = lyricResolve; lyricResolve = null; done(); }
+  }
+
+  function nextLyricItem() {
+    lyricIndex += 1;
+    if (lyricIndex >= lyricQueue.length) closeLyricModal();
+    else showLyricItem();
+  }
+
+  function showLyricItem() {
+    const item = lyricQueue[lyricIndex];
+    $("lyricSource").textContent = item.title;
+    $("lyricSource2").textContent = item.title;
+    $("lyricArtist").value = item.artist || "";
+    $("lyricTrack").value = item.track || "";
+    $("lyricText").value = "";
+    $("lyricCount").textContent = lyricQueue.length > 1
+      ? `${lyricIndex + 1} / ${lyricQueue.length}` : "";
+    setLyricTab("search");
+    $("lyricResults").innerHTML = '<div class="empty">가수와 곡명을 확인하고 검색을 누르세요.</div>';
+    lyricPick = -1;
+    $("lyricApplyBtn").disabled = true;
+    lyricOverlay.classList.add("open");
+    runLyricSearch();
+  }
+
+  function setLyricTab(which) {
+    const search = which === "search";
+    $("lyricTabSearch").classList.toggle("on", search);
+    $("lyricTabPaste").classList.toggle("on", !search);
+    $("lyricSearchPane").hidden = !search;
+    $("lyricPastePane").hidden = search;
+    updateLyricApply();
+  }
+
+  function updateLyricApply() {
+    const pasting = !$("lyricPastePane").hidden;
+    $("lyricApplyBtn").disabled = pasting ? !$("lyricText").value.trim() : lyricPick < 0;
+  }
+
+  async function runLyricSearch() {
+    const box = $("lyricResults");
+    box.innerHTML = '<div class="empty">찾는 중…</div>';
+    lyricPick = -1;
+    updateLyricApply();
+    let rows = [];
+    try {
+      rows = (await api().search_lyrics($("lyricArtist").value, $("lyricTrack").value)) || [];
+    } catch (err) {
+      rows = [];
+    }
+    if (!rows.length) {
+      box.innerHTML = '<div class="empty">결과가 없습니다. 가수·곡명을 바꿔보거나 직접 붙여넣으세요.</div>';
+      return;
+    }
+    box.innerHTML = "";
+    const item = lyricQueue[lyricIndex];
+    for (const row of rows) {
+      const div = document.createElement("div");
+      div.className = "result";
+      const rt = document.createElement("span");
+      rt.className = "rt";
+      const title = document.createElement("b");
+      title.textContent = row.track;
+      const sub = document.createElement("span");
+      const length = row.duration ? ` · ${Math.floor(row.duration / 60)}:${String(row.duration % 60).padStart(2, "0")}` : "";
+      sub.textContent = (row.artist || "") + length;
+      rt.append(title, sub);
+      const badge = document.createElement("span");
+      badge.className = row.hasSynced ? "badge" : "badge plain";
+      badge.textContent = row.hasSynced ? "싱크" : "가사만";
+      div.append(rt, badge);
+      div.addEventListener("click", () => {
+        for (const other of box.children) other.classList.remove("pick");
+        div.classList.add("pick");
+        lyricPick = row.index;
+        updateLyricApply();
+      });
+      // 곡 길이가 4초 안쪽으로 맞는 첫 후보를 미리 골라 둔다.
+      if (lyricPick < 0 && item.duration && row.duration && Math.abs(row.duration - item.duration) <= 4) {
+        div.classList.add("pick");
+        lyricPick = row.index;
+      }
+      box.append(div);
+    }
+    updateLyricApply();
+  }
+
+  $("lyricTabSearch").addEventListener("click", () => setLyricTab("search"));
+  $("lyricTabPaste").addEventListener("click", () => setLyricTab("paste"));
+  $("lyricSearchBtn").addEventListener("click", runLyricSearch);
+  for (const id of ["lyricArtist", "lyricTrack"]) {
+    $(id).addEventListener("keydown", (e) => { if (e.key === "Enter") runLyricSearch(); });
+  }
+  $("lyricText").addEventListener("input", updateLyricApply);
+  $("lyricSkipBtn").addEventListener("click", nextLyricItem);
+  $("lyricCloseX").addEventListener("click", nextLyricItem);
+  $("lyricApplyBtn").addEventListener("click", async () => {
+    const item = lyricQueue[lyricIndex];
+    const pasting = !$("lyricPastePane").hidden;
+    const ok = pasting
+      ? await api().set_lyrics_text(item.id, $("lyricText").value)
+      : await api().choose_lyrics(item.id, lyricPick);
+    if (!ok) { toast("가사를 적용하지 못했습니다."); return; }
+    nextLyricItem();
   });
 
   $("openFolderBtn").addEventListener("click", async () => {

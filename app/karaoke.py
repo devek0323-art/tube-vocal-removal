@@ -2,12 +2,13 @@
 import hashlib
 import os
 import re
+import shutil
 import subprocess
 import urllib.request
 from pathlib import Path
 
 from app.cover import FONT
-from app.platform_support import hidden_process_kwargs
+from app.platform_support import IS_MACOS, IS_WINDOWS, hidden_process_kwargs
 
 _STAMP = re.compile(r"\[(\d+):(\d+(?:\.\d+)?)\]")
 
@@ -25,6 +26,14 @@ def parse_lrc(text):
     return lines
 
 
+def _sha256(path):
+    digest = hashlib.sha256()
+    with Path(path).open("rb") as handle:
+        for chunk in iter(lambda: handle.read(4 * 1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def ensure_model(name, models_dir, on_progress=None, should_cancel=None):
     """위스퍼 체크포인트를 받아 둔다. 이미 있으면 그대로 쓴다.
 
@@ -35,10 +44,14 @@ def ensure_model(name, models_dir, on_progress=None, should_cancel=None):
     import whisper
 
     target = Path(models_dir) / f"{name}.pt"
-    if target.is_file():
-        return target
     url = whisper._MODELS[name]
     expected = url.split("/")[-2]  # 내려받을 파일의 SHA-256이 주소에 박혀 있다.
+    if target.is_file():
+        # 있다고 믿으면 안 된다. 반쯤 받다 끊긴 파일이 남아 있으면 whisper가 스스로
+        # 다시 받으려 들고, 그쪽 다운로드는 창 모드 exe에서 죽는다.
+        if _sha256(target) == expected:
+            return target
+        target.unlink(missing_ok=True)
     target.parent.mkdir(parents=True, exist_ok=True)
     partial = target.with_name(target.name + ".part")
     digest = hashlib.sha256()
@@ -136,24 +149,53 @@ def write_ass(lines, destination, duration):
     return destination
 
 
-def _escape(path):
-    return str(path).replace("\\", "/").replace(":", r"\:")
+def _codecs(gpu):
+    """쓸 인코더를 순서대로. 앞에서부터 시도하고 실패하면 다음으로 넘어간다.
+
+    가속 인코더는 장치나 드라이버가 없으면 그 자리에서 실패한다. NVIDIA 전용
+    nvenc를 맥에서 고르면 영상이 아예 안 나오므로 플랫폼을 보고 고른다.
+    """
+    software = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "23"]
+    if not gpu:
+        return [software]
+    if IS_WINDOWS:
+        return [["-c:v", "h264_nvenc", "-preset", "p4", "-cq", "23"], software]
+    if IS_MACOS:
+        return [["-c:v", "h264_videotoolbox", "-b:v", "3M"], software]
+    return [software]
 
 
-def render(ffmpeg, audio, background, ass_path, destination, duration, gpu=False):
-    """정지 배경을 반복하며 자막과 반주를 얹어 MP4로 굽는다."""
-    codec = (["-c:v", "h264_nvenc", "-preset", "p4", "-cq", "23"] if gpu
-             else ["-c:v", "libx264", "-preset", "veryfast", "-crf", "23"])
-    chain = f"[0:v]subtitles='{_escape(ass_path)}':fontsdir='{_escape(FONT.parent)}'[v]" \
-        if ass_path else "[0:v]null[v]"
-    result = subprocess.run(
-        [str(ffmpeg), "-hide_banner", "-nostats", "-y",
-         "-loop", "1", "-framerate", "24", "-t", f"{duration:.2f}", "-i", str(background),
-         "-i", str(audio), "-filter_complex", chain,
-         "-map", "[v]", "-map", "1:a", *codec, "-pix_fmt", "yuv420p",
-         "-c:a", "aac", "-b:a", "192k", "-shortest", str(destination)],
-        capture_output=True, **hidden_process_kwargs(),
-    )
-    if result.returncode != 0 or not Path(destination).is_file():
-        raise RuntimeError("노래방 영상을 만들지 못했습니다.")
-    return destination
+def render(ffmpeg, audio, background, ass_path, destination, duration, gpu=False, on_proc=None):
+    """정지 배경을 반복하며 자막과 반주를 얹어 MP4로 굽는다.
+
+    자막 경로는 필터 문자열에 넣지 않고 작업 디렉터리를 옮겨 파일명만 넘긴다.
+    ffmpeg 필터 문법에는 작은따옴표를 넣을 방법이 없어서, 제목에 따옴표가 있으면
+    (`IU 'Through the Night'`) 경로를 어떻게 이스케이프해도 깨진다.
+    """
+    chain = "[0:v]null[v]"
+    work = None
+    if ass_path:
+        work = Path(ass_path).parent
+        # 글꼴도 같은 폴더에 둔다. fontsdir에도 경로를 넘기지 않기 위해서다.
+        if not (work / FONT.name).is_file():
+            shutil.copy2(FONT, work / FONT.name)
+        chain = f"[0:v]subtitles={Path(ass_path).name}:fontsdir=.[v]"
+    error = ""
+    for codec in _codecs(gpu):
+        command = [str(ffmpeg), "-hide_banner", "-nostats", "-y",
+                   "-loop", "1", "-framerate", "24", "-t", f"{duration:.2f}", "-i", str(background),
+                   "-i", str(audio), "-filter_complex", chain,
+                   "-map", "[v]", "-map", "1:a", *codec, "-pix_fmt", "yuv420p",
+                   "-c:a", "aac", "-b:a", "192k", "-shortest", str(Path(destination).resolve())]
+        proc = subprocess.Popen(command, cwd=str(work) if work else None,
+                                stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                **hidden_process_kwargs())
+        if on_proc is not None:
+            on_proc(proc)
+        _, stderr = proc.communicate()
+        if proc.returncode == 0 and Path(destination).is_file():
+            return destination
+        Path(destination).unlink(missing_ok=True)     # 만들다 만 파일을 남기지 않는다
+        error = (stderr or b"").decode("utf-8", "replace").strip().splitlines()[-1:] or [""]
+        error = error[0][:200]
+    raise RuntimeError(f"노래방 영상을 만들지 못했습니다. ({error})")
