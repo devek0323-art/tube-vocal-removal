@@ -34,7 +34,8 @@ _META_WORD = re.compile(
     re.I,
 )
 _YEAR = re.compile(r"^(19|20)\d{2}년?$")
-_QUOTES = "'\"‘’“”「」『』《》"
+_APOSTROPHES = "'’＇`´"
+_QUOTES = "'\"‘’“”「」『』《》＂＇`´"
 _TRIM = " -–—_·|｜~,." + _QUOTES
 
 
@@ -71,6 +72,8 @@ def title_candidates(title: str, limit: int = 4):
     found = []
 
     def add(text):
+        # 아포스트로피는 지운다. 공백으로 바꾸면 `You've`가 `You ve`로 쪼개진다.
+        text = re.sub(f"[{re.escape(_APOSTROPHES)}]", "", text)
         text = re.sub(f"[{re.escape(_QUOTES)}]", " ", text)
         text = re.sub(r"\s+", " ", text).strip(_TRIM)
         if len(text) >= 2 and text not in found:
@@ -151,7 +154,7 @@ def _strip_timestamps(synced: str) -> str:
     return "\n".join(lines)
 
 
-def _fetch_lrclib(artist, title, duration):
+def _fetch_lrclib(artist, title, duration, hint=None):
     """LRCLIB 조회. 싱크 가사(.lrc 원본)를 우선, 없으면 순수 텍스트를 반환."""
     import json
 
@@ -178,16 +181,23 @@ def _fetch_lrclib(artist, title, duration):
             rows = json.loads(_http_get(f"{LRCLIB_BASE}/search?{urllib.parse.urlencode(params)}"))
         except Exception:
             continue
-        hit = _lrclib_pick(rows, artist, title, duration, strict=True)
+        hit = _lrclib_pick(rows, artist, title, duration, strict=True, hint=hint)
         if hit:
             return hit
     return None
 
 
-def _lrclib_pick(rows, artist, title, duration, strict):
+def _artist_in_title(name: str, hint: str) -> bool:
+    """그 곡의 가수가 원제목 안에 있는지."""
+    artist, whole = _norm(name), _norm(hint)
+    return bool(artist) and len(artist) >= 2 and artist in whole
+
+
+def _lrclib_pick(rows, artist, title, duration, strict, hint=None):
     """검색 결과에서 제목/가수/길이로 검증해 가장 알맞은 가사를 고른다."""
     if isinstance(rows, dict):
         rows = [rows]
+    passing = []
     for row in rows or []:
         if not isinstance(row, dict):
             continue
@@ -199,6 +209,13 @@ def _lrclib_pick(rows, artist, title, duration, strict):
                 continue
             if duration and row.get("duration") and abs(row["duration"] - duration) > 4:
                 continue
+        passing.append(row)
+    if strict and not artist and hint and len({_norm(r.get("artistName", "")) for r in passing}) > 1:
+        # 제목만으로 찾는 중인데 같은 제목의 다른 곡이 여럿이다.
+        # (`Since You've Been Gone`은 Rainbow·Kelly Clarkson·Aretha Franklin…이 각각 다른 곡)
+        # 이럴 때는 그 곡의 가수가 원제목에 있는 것만 받아들인다.
+        passing = [row for row in passing if _artist_in_title(row.get("artistName", ""), hint)]
+    for row in passing:
         synced = row.get("syncedLyrics")
         plain = row.get("plainLyrics")
         if synced:
@@ -269,7 +286,8 @@ def fetch_lyrics(title, duration=None, artist=None):
     artist = artist or parsed_artist
     for candidate in title_candidates(parsed_title or cleaned):
         for name in ([artist, None] if artist else [None]):
-            found = _fetch_lrclib(name, candidate, duration) or _fetch_kr(name, candidate)
+            found = (_fetch_lrclib(name, candidate, duration, hint=cleaned)
+                     or _fetch_kr(name, candidate))
             if found:
                 return found
     return None
