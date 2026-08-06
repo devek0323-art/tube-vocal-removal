@@ -84,3 +84,11 @@ class LyricsSafetyTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+    def test_dash_with_space_on_one_side_still_splits(self):
+        """`조성모(Jo Sung Mo) -To Heaven`처럼 한쪽만 붙은 대시도 구분자다.
+        단어 속 하이픈(`Seung-Chul`)은 건드리면 안 된다."""
+        self.assertEqual(lyrics.split_artist_title("조성모 -To Heaven"), ("조성모", "To Heaven"))
+        self.assertEqual(lyrics.split_artist_title("Seung-Chul Lee - The western sky"),
+                         ("Seung-Chul Lee", "The western sky"))
+        self.assertEqual(lyrics.split_artist_title("Seung-Chul Lee"), (None, "Seung-Chul Lee"))

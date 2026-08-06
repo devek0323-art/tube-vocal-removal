@@ -69,6 +69,11 @@ def split_artist_title(cleaned: str):
             artist, title = cleaned.split(sep, 1)
             if artist.strip() and title.strip():
                 return artist.strip(), title.strip()
+    # 한쪽에만 공백이 붙은 대시도 구분자로 본다 (`조성모 -To Heaven`).
+    # 양쪽 다 공백이 없는 것(`Seung-Chul`)은 단어의 일부이므로 건드리지 않는다.
+    loose = re.split(r"\s+[-–—]\s*|\s*[-–—]\s+", cleaned, maxsplit=1)
+    if len(loose) == 2 and loose[0].strip() and loose[1].strip():
+        return loose[0].strip(), loose[1].strip()
     return None, cleaned.strip()
 
 
