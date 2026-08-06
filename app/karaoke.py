@@ -147,6 +147,7 @@ def force_align(vocal_path, lyric_lines, rough_starts, models_dir, use_gpu):
     duration = len(audio) / SAMPLE_RATE
 
     best = [None] * len(lines)
+    tail = [None] * len(lines)
     trust = [-1.0] * len(lines)
     window, step = 30.0, 20.0
     start = 0.0
@@ -172,19 +173,21 @@ def force_align(vocal_path, lyric_lines, rough_starts, models_dir, use_gpu):
             except Exception:
                 timings = []
             cursor = 0
-            seen = {}
+            seen, last = {}, {}
             for word in timings:
                 for _ in word.tokens:
                     if cursor < len(owner):
                         index = owner[cursor]
                         if index not in seen:
                             seen[index] = (start + float(word.start), float(word.probability))
+                        last[index] = start + float(word.end)     # 그 줄을 다 부른 시각
                     cursor += 1
             for index, (at, score) in seen.items():
                 if index != lead and score > trust[index]:
                     best[index], trust[index] = at, score
+                    tail[index] = last.get(index)
         start += step
-    return best
+    return best, tail
 
 
 def whisper_model_name(use_gpu):
@@ -213,23 +216,38 @@ ScaledBorderAndShadow: yes
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, OutlineColour, BackColour, Bold, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
 Style: Now,Pretendard Variable,58,&H00FFFFFF,&H00181818,&H80000000,1,1,3,2,2,80,80,150,1
-Style: Next,Pretendard Variable,34,&H00918C84,&H00181818,&H80000000,0,1,2,1,2,80,80,92,1
+Style: Next,Pretendard Variable,42,&H00C8C3BA,&H00181818,&H80000000,0,1,2,1,2,80,80,92,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
 
 
-# 부르는 순간에 딱 맞춰 바꾸면 읽고 따라 부를 시간이 없다. 미리 띄운다.
-SUBTITLE_LEAD = 2.0
+# 살짝만 미리 띄운다. 크게 당기면 부르는 도중에 사라진다 — 한 칸에 한 줄만
+# 띄우는 구조라 "미리 띄우기"와 "부를 때까지 유지"를 동시에 할 수 없다.
+# 미리 읽는 것은 아래 다음 줄(Next)이 맡는다.
+SUBTITLE_LEAD = 0.6
 
 
 def write_ass(lines, destination, duration, lead: float = SUBTITLE_LEAD):
     """현재 줄은 크게, 다음 줄은 흐리게 미리 보여주는 두 줄 자막.
 
-    모든 줄을 같은 만큼 앞당기므로 줄 사이 간격은 그대로다.
+    `lines`는 (시작초, 가사) 또는 (시작초, 가사, 끝초). 끝초를 주면 **그 줄을 다
+    부른 뒤에만** 다음 줄로 넘어간다. 다음 줄 시각이 조금이라도 이르면 아직 부르는
+    중인 줄이 지워지는데, 노래방에서는 그게 제일 거슬린다.
     """
-    lines = [(max(0.0, float(start) - lead), text) for start, text in lines]
+    items = [(float(row[0]), row[1], (float(row[2]) if len(row) > 2 and row[2] is not None else None))
+             for row in lines]
+    shown = []
+    for index, (start, _, _) in enumerate(items):
+        at = max(0.0, start - lead)
+        if index:
+            at = max(at, shown[index - 1])                  # 순서를 뒤집지 않는다
+            previous_end = items[index - 1][2]
+            if previous_end is not None:
+                at = max(at, previous_end)                  # 앞 줄을 다 부른 뒤에
+        shown.append(at)
+    lines = [(shown[index], text) for index, (_, text, _) in enumerate(items)]
     rows = []
     for index, (start, text) in enumerate(lines):
         end = lines[index + 1][0] if index + 1 < len(lines) else duration

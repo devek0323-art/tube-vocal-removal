@@ -774,9 +774,14 @@ class Pipeline:
             return []
         # 받아쓴 결과로 대충 위치를 잡은 뒤, 가사를 정답으로 넣어 다시 맞춘다.
         self.emit({"type": "progress", "id": item.id, "stage": "가사 위치 맞추는 중", "pct": 100})
-        exact = karaoke.force_align(vocal_stem, [text for _, text in rough],
-                                    [at for at, _ in rough], config.MODELS_DIR, use_gpu)
-        return align.settle(rough, exact, onset=onset) if exact else rough
+        exact, ends = karaoke.force_align(vocal_stem, [text for _, text in rough],
+                                          [at for at, _ in rough], config.MODELS_DIR, use_gpu)
+        if not exact:
+            return rough
+        settled = align.settle(rough, exact, onset=onset)
+        # 끝나는 시각을 함께 넘긴다. 그 줄을 다 부른 뒤에만 다음 줄로 넘어간다.
+        return [(at, text, ends[index] if index < len(ends) else None)
+                for index, (at, text) in enumerate(settled)]
 
     def _fetch_thumbnail(self, item, song_dir: Path):
         """유튜브 썸네일을 내려받는다. 로컬 파일이거나 실패하면 None (배경은 단색으로)."""

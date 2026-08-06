@@ -289,6 +289,20 @@ class CoreTests(unittest.TestCase):
             path = write_ass([(0.5, "첫 줄"), (9.0, "둘째 줄")], Path(tmp) / "b.ass", 20.0)
             self.assertIn("0:00:00.00", Path(path).read_text(encoding="utf-8"))
 
+    def test_a_line_is_not_wiped_while_it_is_still_being_sung(self):
+        """다음 줄 시각이 조금이라도 이르면 아직 부르는 중인 줄이 지워진다.
+        그 줄을 다 부른 시각(끝초)을 주면 그때까지 버텨야 한다."""
+        from app.karaoke import write_ass
+
+        # 첫 줄은 20초까지 부르는데 다음 줄 시각이 18초로 잡혔다.
+        with tempfile.TemporaryDirectory() as tmp:
+            path = write_ass([(10.0, "첫 줄", 20.0), (18.0, "둘째 줄", 26.0)],
+                             Path(tmp) / "a.ass", 30.0, lead=0.6)
+            text = Path(path).read_text(encoding="utf-8")
+        starts = [row.split(",")[1] for row in text.splitlines() if row.startswith("Dialogue")]
+        self.assertEqual(starts[0], "0:00:09.40")      # 첫 줄은 조금 미리
+        self.assertEqual(starts[-1], "0:00:20.00")     # 둘째 줄은 첫 줄을 다 부른 뒤에
+
     def test_lrc_parsing_handles_repeated_stamps(self):
         """후렴처럼 한 줄에 태그가 여러 개 붙는 LRC가 흔하다. 전부 살려야 한다."""
         from app.karaoke import parse_lrc
