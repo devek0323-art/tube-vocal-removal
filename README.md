@@ -1,4 +1,4 @@
-# Tube Vocal Removal v3.0
+# Tube Vocal Removal v3.01
 
 유튜브 링크나 오디오 파일에서 **보컬과 반주를 AI로 분리**하는 데스크톱 프로그램입니다.
 개인 보컬 연습 용도로 만들어졌습니다.
@@ -7,13 +7,13 @@
 
 | 운영체제 | 다운로드 | 지원 환경 | GPU 가속 |
 |---|---|---|---|
-| Windows | [Tube-Vocal-Removal-Setup-v3.0.exe](https://github.com/devek0323-art/tube-vocal-removal/releases/download/v3.0/Tube-Vocal-Removal-Setup-v3.0.exe) | Windows 10/11 64비트 | NVIDIA CUDA 또는 CPU |
-| macOS | [Tube-Vocal-Removal-macOS-arm64.dmg](https://github.com/devek0323-art/tube-vocal-removal/releases/download/v3.0/Tube-Vocal-Removal-macOS-arm64.dmg) | macOS 14 이상, Apple Silicon(M1 이상) | Apple MPS/CoreML 또는 CPU |
+| Windows | [Tube-Vocal-Removal-Setup-v3.01.exe](https://github.com/devek0323-art/tube-vocal-removal/releases/download/v3.01/Tube-Vocal-Removal-Setup-v3.01.exe) | Windows 10/11 64비트 | NVIDIA CUDA 또는 CPU |
+| macOS | [Tube-Vocal-Removal-macOS-arm64.dmg](https://github.com/devek0323-art/tube-vocal-removal/releases/download/v3.01/Tube-Vocal-Removal-macOS-arm64.dmg) | macOS 14 이상, Apple Silicon(M1 이상) | Apple MPS/CoreML 또는 CPU |
 
 파일 무결성 확인용 SHA-256:
 
-- Windows (정식): `1B98D7EE477CACD35E59666B8C07AA2DFED77CF7D3FD1259D5027B23FE7ECD5A`
-- Windows (업데이트 패치): `47345A0C79AF1BA1947E7C6D98A85CCD96E24C22BEBCC0982C6CC98974B2263C`
+- Windows (정식): `140EBD829D4B50D829DD163DBF084BBE51608FFE70BED669B8C704251C5F31D5`
+- Windows (업데이트 패치): `E5769F69A89567DCB8083467005F22E8D23358545640C9C4975D9CFECAA6350B`
 - macOS: `8EB4806327EAC2A4ACA7ABAE99923FCBD32A6A1FDBCA2AD25501599A9531AB21`
 
 - AI 모델은 첫 사용 시 자동으로 다운로드됩니다 (인터넷 연결 필요)
@@ -79,6 +79,26 @@ pyinstaller TubeVocalRemoval-mac.spec --noconfirm
 ```
 
 두 플랫폼의 전체 패키징 절차는 `.github/workflows/build.yml`에 정의되어 있습니다.
+
+### v3.01 변경
+
+- **가사 싱크를 다시 만들었습니다** — 예전에는 음성 인식이 받아쓴 결과에 가사를 짝지어서,
+  잘못 들은 곳에서 자막이 통째로 밀렸습니다(한 곡에서 10초). 이제 **가사를 정답으로 넣고
+  위치만 찾습니다.** 잘못 들을 여지가 없어 그런 어긋남이 생기지 않습니다. 실측 오차는
+  1초 안쪽입니다
+- **가사를 못 찾으면 직접 찾을 수 있습니다** — 분리 시작을 누를 때 못 찾은 곡만 물어봅니다.
+  가수·곡명을 고쳐 다시 찾거나, 가사를 직접 붙여넣거나, 건너뛸 수 있습니다. 잘 찾은 곡은
+  아무것도 묻지 않습니다
+- **가사를 더 잘 찾습니다** — 유튜브 제목 형태 여덟 가지를 새로 처리합니다. 가수와 곡이
+  뒤집힌 제목, 따옴표 안에만 곡명이 있는 제목, 괄호에 영문을 병기한 제목, 채널명을 한글
+  자모(ㅣ)로 구분한 제목 등입니다. 실측 100곡에서 한글 매칭이 50%에서 95%로 올랐습니다
+- **같은 제목의 다른 곡이 붙지 않습니다** — `Since You've Been Gone`처럼 여러 가수가 서로
+  다른 곡으로 갖고 있는 제목에서 엉뚱한 가사가 저장되던 문제를 고쳤습니다
+- **라이브 영상에 스튜디오 타이밍이 얹히지 않습니다** — 곡 길이를 대조해 다른 버전의 싱크
+  가사는 타이밍을 쓰지 않고 음성으로 다시 맞춥니다
+- **노래방 영상(P6) 결함 정리** — 제목에 작은따옴표가 있으면 영상이 만들어지지 않던 문제,
+  macOS에서 GPU 가속을 켜면 영상이 생성되지 않던 문제, 실패한 곡의 임시 파일이 남던 문제,
+  중단 버튼이 영상 인코딩을 멈추지 못하던 문제를 고쳤습니다
 
 ### v3.0 변경
 
