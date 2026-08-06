@@ -1,0 +1,444 @@
+- generic [active] [ref=e1]:
+  - generic:
+    - link "게시판 목록 바로가기" [ref=e2] [cursor=pointer]:
+      - /url: "#cafe-menu"
+    - link "본문 바로가기" [ref=e3] [cursor=pointer]:
+      - /url: "#main-area"
+    - link "웹 접근성이 좋은 모바일 웹에서 사용하겠습니까?" [ref=e4] [cursor=pointer]:
+      - /url: https://m.cafe.naver.com/livearmy
+  - heading "【테리의라이브아미】보컬트레이닝의 전설 - 노래/발성 스쿨" [level=1] [ref=e5]
+  - generic [ref=e6]:
+    - generic [ref=e7]:
+      - generic [ref=e8]:
+        - link [ref=e9] [cursor=pointer]:
+          - /url: http://www.naver.com
+          - img "NAVER" [ref=e10]
+        - generic [ref=e11]:
+          - paragraph [ref=e12]:
+            - link "카페홈" [ref=e13] [cursor=pointer]:
+              - /url: https://section.cafe.naver.com
+          - link "이웃" [ref=e15] [cursor=pointer]:
+            - /url: https://cafe.naver.com/ca-fe/home/town
+          - generic [ref=e16]:
+            - link "가입카페" [ref=e17] [cursor=pointer]:
+              - /url: "#"
+            - link [ref=e18] [cursor=pointer]:
+              - /url: "#"
+              - img "가입카페" [ref=e19]
+          - link "새글" [ref=e21] [cursor=pointer]:
+            - /url: "#"
+          - link "내소식" [ref=e23] [cursor=pointer]:
+            - /url: "#"
+          - link "채팅" [ref=e25] [cursor=pointer]:
+            - /url: "#"
+          - generic [ref=e26]:
+            - strong [ref=e27]: 사용자 링크
+            - list [ref=e28]:
+              - listitem [ref=e29]:
+                - link "로그인" [ref=e30] [cursor=pointer]:
+                  - /url: https://nid.naver.com/nidlogin.login
+              - listitem [ref=e34]:
+                - link "서비스 더보기" [ref=e35] [cursor=pointer]:
+                  - /url: javascript:;
+      - link [ref=e40] [cursor=pointer]:
+        - /url: /MyCafeIntro.nhn?clubid=15723536
+        - img "【테리의라이브아미】보컬트레이닝의 전설 - 노래/발성 스쿨" [ref=e41]
+      - list [ref=e44]:
+        - listitem [ref=e45]:
+          - link "공지사항 / 업데이트" [ref=e46] [cursor=pointer]:
+            - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=1&search.boardtype=L
+        - listitem [ref=e47]:
+          - link "카페규정(신규필독)" [ref=e48] [cursor=pointer]:
+            - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=113&search.boardtype=L
+        - listitem [ref=e49]:
+          - link "From. 테리마스터" [ref=e50] [cursor=pointer]:
+            - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=241&search.boardtype=L
+        - listitem [ref=e51]:
+          - link "★보컬발성Q&A★" [ref=e52] [cursor=pointer]:
+            - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=42&search.boardtype=L
+        - listitem [ref=e53]:
+          - link "★보컬오피니언(필독).." [ref=e54] [cursor=pointer]:
+            - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=41&search.boardtype=L
+        - listitem [ref=e55]:
+          - link "오피니언 외전" [ref=e56] [cursor=pointer]:
+            - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=415&search.boardtype=L
+        - listitem [ref=e57]:
+          - link "인기글" [ref=e58] [cursor=pointer]:
+            - /url: /f-e/cafes/15723536/popular
+        - listitem [ref=e59]:
+          - link "전체글보기" [ref=e60] [cursor=pointer]:
+            - /url: /ArticleList.nhn?search.clubid=15723536&search.boardtype=L
+      - generic [ref=e61]:
+        - generic [ref=e62]:
+          - generic [ref=e64]:
+            - list [ref=e65]:
+              - listitem [ref=e66] [cursor=pointer]:
+                - button "카페정보" [disabled] [ref=e67]
+              - listitem [ref=e68] [cursor=pointer]:
+                - button "나의활동" [ref=e69]
+            - generic [ref=e70]:
+              - heading "카페정보" [level=4] [ref=e71]
+              - list [ref=e73]:
+                - listitem [ref=e74]:
+                  - link [ref=e75] [cursor=pointer]:
+                    - /url: /MyCafeIntro.nhn?clubid=15723536
+                    - img "카페아이콘" [ref=e76]
+                - listitem [ref=e77]:
+                  - link "테리마스터" [ref=e78] [cursor=pointer]:
+                    - /url: /f-e/cafes/15723536/members/pHhJnkRcpC8d_82Nm_NAUi_17SDORq3they6orn1jrk
+                  - emphasis [ref=e81]: 매니저
+                  - link "2008.03.16. 개설" [ref=e83] [cursor=pointer]:
+                    - /url: "#"
+                  - link "카페소개" [ref=e85] [cursor=pointer]:
+                    - /url: "#"
+              - list [ref=e87]:
+                - listitem [ref=e88]:
+                  - link [ref=e89] [cursor=pointer]:
+                    - /url: "#"
+                    - strong [ref=e90]: 카페등급
+                    - emphasis [ref=e92]: 가지4단계
+                - listitem [ref=e93] [cursor=pointer]:
+                  - strong [ref=e94]: 카페멤버수
+                  - link "멤버수 33,385 비공개" [ref=e95]:
+                    - /url: "#"
+                    - img "멤버수" [ref=e96]
+                    - emphasis [ref=e97]:
+                      - text: 33,385
+                      - generic [ref=e98]: 비공개
+                  - link "닫기":
+                    - /url: "#"
+                  - link "초대" [ref=e100]:
+                    - /url: "#"
+                - listitem [ref=e101]:
+                  - img "지역" [ref=e102]
+                  - text: 서울특별시 송파구
+            - link "카페 가입하기" [ref=e104] [cursor=pointer]:
+              - /url: "#"
+            - list [ref=e106]:
+              - listitem [ref=e107]:
+                - link "카페 채팅" [ref=e108] [cursor=pointer]:
+                  - /url: "#"
+          - generic [ref=e110]:
+            - textbox "카페글 검색어 입력" [ref=e111]
+            - button "검색" [ref=e112] [cursor=pointer]
+          - generic [ref=e114]:
+            - list [ref=e115]:
+              - listitem [ref=e116]:
+                - link "전체글보기" [ref=e117] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.boardtype=L
+                - generic [ref=e118]: 206,766
+              - listitem [ref=e119]:
+                - link "인기글" [ref=e120] [cursor=pointer]:
+                  - /url: /f-e/cafes/15723536/popular
+                - img "새 게시글" [ref=e121]
+              - listitem [ref=e122]:
+                - link "카페지식활동" [ref=e123] [cursor=pointer]:
+                  - /url: /KinActivityNewQuestionList.nhn?search.clubid=15723536
+            - heading "No.1 보컬스쿨" [level=3] [ref=e125]
+            - heading "테리의 라이브아미" [level=3] [ref=e128]
+            - list [ref=e130]:
+              - listitem [ref=e131]:
+                - link "공지사항 / 업데이트" [ref=e132] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=1&search.boardtype=L
+              - listitem [ref=e133]:
+                - link "카페규정(신규필독)" [ref=e134] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=113&search.boardtype=L
+              - listitem [ref=e135]:
+                - link "가입인사" [ref=e136] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=611&search.boardtype=L
+              - listitem [ref=e137]:
+                - link "등업게시판" [ref=e138] [cursor=pointer]:
+                  - /url: /LevelUpApplyList.nhn?search.clubid=15723536
+              - listitem [ref=e139]:
+                - link "☞훈련병게시판☜NEW" [ref=e140] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=618&search.boardtype=L
+            - list [ref=e142]:
+              - listitem [ref=e143]:
+                - link "To.운영자 [의견/신고]" [ref=e144] [cursor=pointer]:
+                  - /url: http://note.naver.com/note/sendForm.nhn?popup=1&targetUserId=diriter&toNickName=콘스탄틴&svcType=2
+            - list
+            - heading "☆라이브아미 수강신청☆☆" [level=3] [ref=e147]
+            - list [ref=e149]:
+              - listitem [ref=e150]:
+                - link "보컬레슨 수강신청" [ref=e151] [cursor=pointer]:
+                  - /url: http://www.livearmy.co.kr/question/
+              - listitem [ref=e152]:
+                - link "복스코어 수강신청" [ref=e153] [cursor=pointer]:
+                  - /url: http://pf.kakao.com/_xdxkxkfn/chat
+              - listitem [ref=e154]:
+                - link "음성교정 수강신청" [ref=e155] [cursor=pointer]:
+                  - /url: http://pf.kakao.com/_xdxkxkfn/chat
+              - listitem [ref=e156]:
+                - link "테리카 수강신청" [ref=e157] [cursor=pointer]:
+                  - /url: http://pf.kakao.com/_xdxkxkfn/chat
+            - heading "★놀라운 비포&애프터★" [level=3] [ref=e159]
+            - list [ref=e161]:
+              - listitem [ref=e162]:
+                - link "마스터과정 변화" [ref=e163] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=253&search.boardtype=L
+              - listitem [ref=e164]:
+                - link "어드밴스드 변화" [ref=e165] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=592&search.boardtype=L
+              - listitem [ref=e166]:
+                - link "베이직(~8개월) 변화" [ref=e167] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=251&search.boardtype=L
+              - listitem [ref=e168]:
+                - link "비기너(~3개월) 변화" [ref=e169] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=250&search.boardtype=L
+            - heading "라이브아미 후기" [level=3] [ref=e171]
+            - list [ref=e173]:
+              - listitem [ref=e174]:
+                - link "보컬레슨 후기" [ref=e175] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=420&search.boardtype=L
+              - listitem [ref=e176]:
+                - link "복스코어 후기" [ref=e177] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=600&search.boardtype=L
+              - listitem [ref=e178]:
+                - link "테리카 잉글리쉬 후기" [ref=e179] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=621&search.boardtype=L
+              - listitem [ref=e180]:
+                - link "라이브아미 콘서트 후기" [ref=e181] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=496&search.boardtype=L
+              - listitem [ref=e182]:
+                - link "회원정모 후기" [ref=e183] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=216&search.boardtype=L
+            - heading "주옥같은 테리 원장의 글" [level=3] [ref=e185]
+            - list [ref=e187]:
+              - listitem [ref=e188]:
+                - link "★보컬오피니언(필독)★" [ref=e189] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=41&search.boardtype=L
+              - listitem [ref=e190]:
+                - link "From. 테리마스터" [ref=e191] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=241&search.boardtype=L
+                - img "새 게시글" [ref=e192]
+              - listitem [ref=e193]:
+                - link "보컬마스터팁(상병용)new" [ref=e194] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=625&search.boardtype=L
+              - listitem [ref=e195]:
+                - link "복스코어 VOX CORE" [ref=e196] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=599&search.boardtype=L
+              - listitem [ref=e197]:
+                - link "마스터레슨일기(new)" [ref=e198] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=610&search.boardtype=W
+              - listitem [ref=e199]:
+                - link "오피니언 외전" [ref=e200] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=415&search.boardtype=L
+            - heading "커뮤니티" [level=3] [ref=e202]
+            - list [ref=e204]:
+              - listitem [ref=e205]:
+                - link "아미주변맛집(new)" [ref=e206] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=624&search.boardtype=L
+              - listitem [ref=e207]:
+                - link "자유게시판" [ref=e208] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=2&search.boardtype=L
+                - img "새 게시글" [ref=e209]
+              - listitem [ref=e210]:
+                - link "아미 유머방" [ref=e211] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=82&search.boardtype=L
+              - listitem [ref=e212]:
+                - link "공식 블로그" [ref=e213] [cursor=pointer]:
+                  - /url: https://blog.naver.com/livearmy_official
+              - listitem [ref=e214]:
+                - link "찍고올리고" [ref=e215] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=474&search.boardtype=I
+                - img "새 게시글" [ref=e216]
+              - listitem [ref=e217]:
+                - link "아미 중고장터" [ref=e218] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=601&search.boardtype=L
+            - list
+            - heading "VOCAL" [level=3] [ref=e221]
+            - list [ref=e223]:
+              - listitem [ref=e224]:
+                - link "회원노래" [ref=e225] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=324&search.boardtype=L
+                - img "새 게시글" [ref=e226]
+              - listitem [ref=e227]:
+                - link "보컬자유게시판" [ref=e228] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=174&search.boardtype=L
+              - listitem [ref=e229]:
+                - link "프로뮤지션영상추천" [ref=e230] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=139&search.boardtype=L
+              - listitem [ref=e231]:
+                - link "유튜브커버영상추천" [ref=e232] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=588&search.boardtype=L
+              - listitem [ref=e233]:
+                - link "★짐터너의 보컬가이드북★" [ref=e234] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=421&search.boardtype=L
+              - listitem [ref=e235]:
+                - link "공연/오디션/대회 정보" [ref=e236] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=94&search.boardtype=L
+            - list
+            - heading "Q&A" [level=3] [ref=e239]
+            - list [ref=e241]:
+              - listitem [ref=e242]:
+                - link "★보컬발성Q&A★" [ref=e243] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=42&search.boardtype=L
+              - listitem [ref=e244]:
+                - link "소리파일Q&A <상병>" [ref=e245] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=173&search.boardtype=L
+              - listitem [ref=e246]:
+                - link "레코딩 Q&A" [ref=e247] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=222&search.boardtype=L
+            - heading "라이브아미 사진과 영상" [level=3] [ref=e249]
+            - list [ref=e251]:
+              - listitem [ref=e252]:
+                - link "라이브 영상" [ref=e253] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=507&search.boardtype=L
+              - listitem [ref=e254]:
+                - link "스튜디오 보컬 영상" [ref=e255] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=526&search.boardtype=L
+              - listitem [ref=e256]:
+                - link "라이브아미 콘서트사진" [ref=e257] [cursor=pointer]:
+                  - /url: /ArticleList.nhn?search.clubid=15723536&search.menuid=270&search.boardtype=I
+            - generic [ref=e258]:
+              - heading [level=3] [ref=e259]:
+                - link "구메뉴" [ref=e260] [cursor=pointer]:
+                  - /url: "#"
+              - paragraph [ref=e261]:
+                - link [ref=e262] [cursor=pointer]:
+                  - /url: "#"
+                  - img "열기/닫기" [ref=e263]
+            - list
+            - list
+            - list
+            - list
+            - list
+            - list
+          - list [ref=e270]:
+            - listitem [ref=e271]:
+              - generic [ref=e272]:
+                - heading "최근 댓글ㆍ답글" [level=4] [ref=e274]
+                - list [ref=e275]:
+                  - listitem [ref=e276]:
+                    - link "청의 호수" [ref=e278] [cursor=pointer]:
+                      - /url: /ArticleRead.nhn?clubid=15723536&articleid=379539
+                  - listitem [ref=e280]:
+                    - link "코어에 대한 이야기" [ref=e282] [cursor=pointer]:
+                      - /url: /ArticleRead.nhn?clubid=15723536&articleid=379542
+                  - listitem [ref=e284]:
+                    - link "Iron Maiden - Run to the Hills 불러봤습니다" [ref=e286] [cursor=pointer]:
+                      - /url: /ArticleRead.nhn?clubid=15723536&articleid=379541
+                  - listitem [ref=e288]:
+                    - link "가성비 러닝화 추천 부탁드립니다" [ref=e290] [cursor=pointer]:
+                      - /url: /ArticleRead.nhn?clubid=15723536&articleid=379540
+                  - listitem [ref=e292]:
+                    - link "Nickelback - How you remind me 커버" [ref=e294] [cursor=pointer]:
+                      - /url: /ArticleRead.nhn?clubid=15723536&articleid=379500
+                - generic [ref=e296]:
+                  - generic [ref=e297]:
+                    - generic [ref=e298]: 최근 댓글,답글 목록
+                    - text: 이전
+                  - text: ㅣ
+                  - generic [ref=e300]:
+                    - generic [ref=e301]: 최근 댓글,답글 목록
+                    - text: 다음
+            - listitem [ref=e302]:
+              - generic [ref=e303]:
+                - heading "카운터" [level=3]
+                - paragraph [ref=e304]: 오늘
+                - paragraph [ref=e305]: 전체
+            - listitem [ref=e306]:
+              - generic [ref=e307]:
+                - heading "지난주 멤버 랭킹" [level=4] [ref=e309]
+                - list [ref=e310]:
+                  - listitem [ref=e311]:
+                    - generic [ref=e312]: 댓글
+                  - listitem [ref=e313]:
+                    - generic [ref=e314]: ▼
+                    - link "게시글" [ref=e315] [cursor=pointer]:
+                      - /url: "#"
+                  - listitem [ref=e316]:
+                    - generic [ref=e317]: ▼
+                    - link "방문" [ref=e318] [cursor=pointer]:
+                      - /url: "#"
+                - heading "댓글" [level=5] [ref=e319]
+                - generic [ref=e320]:
+                  - list [ref=e321]:
+                    - listitem [ref=e322]:
+                      - generic [ref=e323]: "1."
+                      - link "복숭아" [ref=e325] [cursor=pointer]:
+                        - /url: "#"
+                    - listitem [ref=e327]:
+                      - generic [ref=e328]: "2."
+                      - link "테빈캠벨" [ref=e330] [cursor=pointer]:
+                        - /url: "#"
+                    - listitem [ref=e332]:
+                      - generic [ref=e333]: "3."
+                      - link "테리마스터" [ref=e335] [cursor=pointer]:
+                        - /url: "#"
+                    - listitem [ref=e337]:
+                      - generic [ref=e338]: "4."
+                      - link "올세인츠" [ref=e340] [cursor=pointer]:
+                        - /url: "#"
+                    - listitem [ref=e342]:
+                      - generic [ref=e343]: "5."
+                      - link "사용중이란말인가" [ref=e345] [cursor=pointer]:
+                        - /url: "#"
+                  - generic [ref=e347]:
+                    - text: 이전 ㅣ
+                    - link "다음" [ref=e349] [cursor=pointer]:
+                      - /url: "#"
+            - listitem [ref=e350]:
+              - generic [ref=e351]:
+                - heading "지난주 게시글 랭킹" [level=4] [ref=e353]
+                - list [ref=e354]:
+                  - listitem [ref=e355]:
+                    - generic [ref=e356]: 좋아요 횟수
+                  - listitem [ref=e357]:
+                    - generic [ref=e358]: ▼
+                    - link "댓글수" [ref=e359] [cursor=pointer]:
+                      - /url: "#"
+                - heading "좋아요 횟수" [level=5] [ref=e360]
+                - list [ref=e361]:
+                  - listitem [ref=e362]:
+                    - generic [ref=e363]: "1."
+                    - link "잠시 멈춰도 괜.." [ref=e365] [cursor=pointer]:
+                      - /url: /ArticleRead.nhn?clubid=15723536&articleid=379527
+                  - listitem [ref=e367]:
+                    - generic [ref=e368]: "2."
+                    - link "휴가" [ref=e370] [cursor=pointer]:
+                      - /url: /ArticleRead.nhn?clubid=15723536&articleid=379519
+                  - listitem [ref=e372]:
+                    - generic [ref=e373]: "3."
+                    - link "이동주 트레이너.." [ref=e375] [cursor=pointer]:
+                      - /url: /ArticleRead.nhn?clubid=15723536&articleid=379531
+                  - listitem [ref=e377]:
+                    - generic [ref=e378]: "4."
+                    - link "잠시 멈춰도 괜.." [ref=e380] [cursor=pointer]:
+                      - /url: /ArticleRead.nhn?clubid=15723536&articleid=379526
+                  - listitem [ref=e382]:
+                    - generic [ref=e383]: "5."
+                    - link "돼지 카메라마사.." [ref=e385] [cursor=pointer]:
+                      - /url: /ArticleRead.nhn?clubid=15723536&articleid=379530
+                - generic [ref=e387]:
+                  - text: 이전 ㅣ
+                  - link "다음" [ref=e389] [cursor=pointer]:
+                    - /url: "#"
+            - listitem [ref=e390]:
+              - generic [ref=e391]:
+                - heading "멤버 소식" [level=4] [ref=e393]
+                - list [ref=e394]:
+                  - listitem [ref=e395]:
+                    - generic [ref=e396]: 방문
+                  - listitem [ref=e397]:
+                    - generic [ref=e398]: ▼
+                    - text: 신입
+                - heading "방문" [level=5] [ref=e399]
+                - list [ref=e400]:
+                  - list [ref=e401]:
+                    - generic [ref=e402]: 카페 멤버만보실 수 있습니다.
+          - link [ref=e404] [cursor=pointer]:
+            - /url: https://talk.naver.com/ct/w4nd8o
+            - img "궁금한게 있을 땐 카페 스마트봇" [ref=e405]
+        - iframe [ref=e407]:
+          
+      - contentinfo [ref=e408]:
+        - heading "【테리의라이브아미】보컬트레이닝의 전설 - 노래/발성 스쿨" [level=2] [ref=e409]
+        - link "https://cafe.naver.com/livearmy" [ref=e410] [cursor=pointer]:
+          - /url: "#"
+        - heading "NAVER 카페" [level=2]:
+          - link "NAVER 카페" [ref=e411] [cursor=pointer]:
+            - /url: "#"
+    - link "콘텐츠 상단" [ref=e413] [cursor=pointer]:
+      - /url: "#"
+  - iframe

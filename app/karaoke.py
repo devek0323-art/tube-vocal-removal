@@ -220,8 +220,16 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
 
 
-def write_ass(lines, destination, duration):
-    """현재 줄은 크게, 다음 줄은 흐리게 미리 보여주는 두 줄 자막."""
+# 부르는 순간에 딱 맞춰 바꾸면 읽고 따라 부를 시간이 없다. 미리 띄운다.
+SUBTITLE_LEAD = 2.0
+
+
+def write_ass(lines, destination, duration, lead: float = SUBTITLE_LEAD):
+    """현재 줄은 크게, 다음 줄은 흐리게 미리 보여주는 두 줄 자막.
+
+    모든 줄을 같은 만큼 앞당기므로 줄 사이 간격은 그대로다.
+    """
+    lines = [(max(0.0, float(start) - lead), text) for start, text in lines]
     rows = []
     for index, (start, text) in enumerate(lines):
         end = lines[index + 1][0] if index + 1 < len(lines) else duration

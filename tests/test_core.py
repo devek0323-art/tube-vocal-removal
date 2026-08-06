@@ -275,6 +275,20 @@ class CoreTests(unittest.TestCase):
         self.assertIn(f'#define MyAppVersion "{APP_VERSION}"', text)
         self.assertIn(f'#define MyRuntimeRevision "{RUNTIME_REVISION}"', text)
 
+    def test_subtitles_appear_before_the_line_is_sung(self):
+        """부르는 순간에 바꾸면 읽고 따라 부를 시간이 없다. 미리 띄워야 한다."""
+        from app.karaoke import SUBTITLE_LEAD, write_ass
+
+        with tempfile.TemporaryDirectory() as tmp:
+            path = write_ass([(10.0, "첫 줄"), (20.0, "둘째 줄")], Path(tmp) / "a.ass", 30.0)
+            text = Path(path).read_text(encoding="utf-8")
+        self.assertIn("0:00:%05.2f" % (10.0 - SUBTITLE_LEAD), text)
+        self.assertIn("0:00:%05.2f" % (20.0 - SUBTITLE_LEAD), text)
+        # 앞부분이 음수가 되면 안 된다.
+        with tempfile.TemporaryDirectory() as tmp:
+            path = write_ass([(0.5, "첫 줄"), (9.0, "둘째 줄")], Path(tmp) / "b.ass", 20.0)
+            self.assertIn("0:00:00.00", Path(path).read_text(encoding="utf-8"))
+
     def test_lrc_parsing_handles_repeated_stamps(self):
         """후렴처럼 한 줄에 태그가 여러 개 붙는 LRC가 흔하다. 전부 살려야 한다."""
         from app.karaoke import parse_lrc
