@@ -43,7 +43,8 @@ _META_WORD = re.compile(
     r"|^(no|vol|pt|part|ver|version|disc|track)\d*$"
     r"|^(full|official|live|inst|mr|audio|video|mv|lyric|lyrics|가사|반주|음원|자막)$"
     r"|^(special|clip|teaser|stage|performance|remaster|remastered|edit|hq|hd|ost)$"
-    r"|^\d{1,3}$",
+    r"|^\d{1,3}$"
+    r"|^\d{6,8}$",          # 방송 날짜 (20160730). 곡 제목이 6~8자리 숫자인 경우는 없다
     re.I,
 )
 _YEAR = re.compile(r"^(19|20)\d{2}년?$")
