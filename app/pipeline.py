@@ -363,6 +363,7 @@ class Pipeline:
             fits = self._duration_fits(song, row["duration"])
             rows.append({"index": index, "track": row["track"], "artist": row["artist"],
                          "duration": row["duration"],
+                         "source": "벅스" if row["result"].get("source") == "web" else "LRCLIB",
                          # 길이가 다르면 타이밍을 못 쓴다. 쓸 수 있을 때만 싱크라고 표시한다.
                          "hasSynced": bool(row["hasSynced"] and fits),
                          "lengthOff": bool(song and row["duration"] and not fits)})

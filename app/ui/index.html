@@ -1324,7 +1324,7 @@
       title.textContent = row.track;
       const sub = document.createElement("span");
       const length = row.duration ? ` · ${Math.floor(row.duration / 60)}:${String(row.duration % 60).padStart(2, "0")}` : "";
-      sub.textContent = (row.artist || "") + length;
+      sub.textContent = (row.artist || "") + length + (row.source ? ` · ${row.source}` : "");
       rt.append(title, sub);
       const badge = document.createElement("span");
       badge.className = row.hasSynced ? "badge" : "badge plain";

@@ -395,6 +395,12 @@ def search_candidates(artist, track, limit=8):
         })
         if len(found) >= limit:
             break
+    # 국내곡은 LRCLIB에 없는 경우가 많다(실측 50곡 중 21곡이 이쪽에서 나왔다).
+    # 자동 조회는 여기까지 가는데 직접 찾기가 안 가면 앞뒤가 맞지 않는다.
+    korean = _fetch_kr(artist, track) if track else None
+    if korean:
+        found.append({"track": track, "artist": artist or "", "duration": 0,
+                      "hasSynced": False, "result": korean})
     return found
 
 

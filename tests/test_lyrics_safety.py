@@ -23,6 +23,18 @@ class LyricsSafetyTests(unittest.TestCase):
         hit = lyrics._lrclib_pick(only, None, "Since Youve Been Gone", 213, strict=True, hint="Since Youve Been Gone")
         self.assertEqual(hit["text"], "엉뚱한 가사")
 
+    def test_manual_search_also_falls_back_to_the_korean_source(self):
+        """자동 조회는 국내 사이트까지 가는데 직접 찾기가 LRCLIB만 보면 앞뒤가 안 맞는다.
+        실측 한글 50곡 중 21곡이 국내 사이트에서 나왔다."""
+        korean = {"text": "밤하늘의 별을", "synced": None, "source": "web"}
+        with mock.patch("app.lyrics._http_get", return_value=b"[]"), \
+                mock.patch("app.lyrics._fetch_kr", return_value=korean) as bugs:
+            rows = lyrics.search_candidates("경서", "밤하늘의 별을")
+        self.assertTrue(bugs.called)
+        self.assertEqual(len(rows), 1)
+        self.assertEqual(rows[0]["result"]["source"], "web")
+        self.assertFalse(rows[0]["hasSynced"])      # 국내 사이트는 싱크 가사가 없다
+
     def test_fullwidth_quotes_and_apostrophes_leave_the_search_term(self):
         """`＂Since You've Been Gone＂` → `Since Youve Been Gone`.
         아포스트로피를 공백으로 바꾸면 `You ve`로 쪼개진다."""
