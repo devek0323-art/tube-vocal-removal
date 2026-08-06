@@ -760,10 +760,23 @@ class Pipeline:
                 "stage": "가사 인식 모델 받는 중", "pct": pct})),
             should_cancel=self._cancel.is_set,
         )
-        segments = karaoke.whisper_segments(vocal_stem, found["text"], config.MODELS_DIR, use_gpu)
+        segments, words = karaoke.whisper_segments(vocal_stem, found["text"],
+                                                   config.MODELS_DIR, use_gpu)
         onset = align.vocal_onset(vocal_stem)
-        return align.align(found["text"].splitlines(),
-                           align.drop_hallucinations(segments, onset), onset=onset)
+        lines = found["text"].splitlines()
+        if words:
+            rough = align.align_words(lyric_lines=lines,
+                                      words=align.drop_hallucinations(words, onset, key="start"),
+                                      onset=onset)
+        else:
+            rough = align.align(lines, align.drop_hallucinations(segments, onset), onset=onset)
+        if not rough:
+            return []
+        # 받아쓴 결과로 대충 위치를 잡은 뒤, 가사를 정답으로 넣어 다시 맞춘다.
+        self.emit({"type": "progress", "id": item.id, "stage": "가사 위치 맞추는 중", "pct": 100})
+        exact = karaoke.force_align(vocal_stem, [text for _, text in rough],
+                                    [at for at, _ in rough], config.MODELS_DIR, use_gpu)
+        return align.settle(rough, exact, onset=onset) if exact else rough
 
     def _fetch_thumbnail(self, item, song_dir: Path):
         """유튜브 썸네일을 내려받는다. 로컬 파일이거나 실패하면 None (배경은 단색으로)."""

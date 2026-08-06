@@ -28,12 +28,110 @@ def vocal_onset(vocal_path, floor_ratio: float = 0.06) -> float:
     return float(loud[0]) * 0.5 if len(loud) else 0.0
 
 
-def drop_hallucinations(segments, onset: float, lead: float = 1.0):
-    """노래가 시작하기 전 세그먼트를 버린다.
+def drop_hallucinations(items, onset: float, lead: float = 1.0, key: str = "start"):
+    """노래가 시작하기 전 세그먼트(또는 단어)를 버린다.
 
     가사를 initial_prompt로 넣으면 인식기가 0초에 그 문장을 그대로 뱉는 일이 있다.
     """
-    return [s for s in segments if float(s["start"]) >= onset - lead]
+    return [item for item in items if float(item[key]) >= onset - lead]
+
+
+def align_words(lyric_lines, words, onset=None):
+    """가사 줄과 인식된 '단어'를 글자 단위로 맞춰 (시작초, 가사)를 만든다.
+
+    세그먼트(30초 덩어리) 단위로 맞추면 한 덩어리가 여러 줄을 덮을 때 글자 수
+    비율로 나눌 수밖에 없고, 그만큼 줄 경계가 실제 발음과 어긋난다. 단어 시각이
+    있으면 그 줄의 첫 글자가 실제로 언제 발음됐는지 바로 읽을 수 있다.
+    """
+    lyrics = [line.strip() for line in lyric_lines if line.strip()]
+    if not lyrics or not words:
+        return []
+
+    # 인식 결과를 글자 흐름으로 펴고, 글자마다 시각을 매단다.
+    heard, times = [], []
+    for word in words:
+        text = _norm(word.get("word", ""))
+        if not text:
+            continue
+        begin, finish = float(word["start"]), float(word["end"])
+        step = max(finish - begin, 0.0) / len(text)
+        for position, letter in enumerate(text):
+            heard.append(letter)
+            times.append(begin + step * position)
+    if not heard:
+        return []
+
+    # 가사도 같은 방식으로 펴되 글자마다 몇 번째 줄인지 기억해 둔다.
+    keys = [_norm(line) for line in lyrics]
+    flat, owner = [], []
+    for index, key in enumerate(keys):
+        for letter in key:
+            flat.append(letter)
+            owner.append(index)
+    if not flat:
+        return []
+
+    starts = {}
+    matcher = SequenceMatcher(None, flat, heard, autojunk=False)
+    for lyric_at, heard_at, size in matcher.get_matching_blocks():
+        for step in range(size):
+            line = owner[lyric_at + step]
+            if line not in starts:
+                starts[line] = times[heard_at + step]
+
+    first = onset if onset is not None else times[0]
+    return _fill_and_order(lyrics, keys, [starts.get(i) for i in range(len(lyrics))], first)
+
+
+def settle(rough, exact, onset=None):
+    """강제 정렬 결과를 받아들이되, 못 맞춘 줄은 대략 위치로 메운다.
+
+    강제 정렬은 창 안쪽 줄에만 답을 준다. 가장자리로 밀려 답이 없는 줄은 앞뒤
+    확정된 줄 사이에 끼워 넣는다.
+    """
+    lyrics = [text for _, text in rough]
+    keys = [_norm(text) for text in lyrics]
+    filled = [None if at is None else float(at) for at in exact]
+    if not any(value is not None for value in filled):
+        return rough
+    # 첫 줄이 창 시작에 눌려 앞당겨지는 자리는 대략 위치를 그대로 쓴다.
+    anchored = next(index for index, value in enumerate(filled) if value is not None)
+    if anchored == 0 and len(filled) > 1 and filled[1] is not None:
+        if filled[1] - filled[0] > 12.0:
+            filled[0] = rough[0][0]
+    first = onset if onset is not None else min(v for v in filled if v is not None)
+    return _fill_and_order(lyrics, keys, filled, first)
+
+
+def _fill_and_order(lyrics, keys, filled, first):
+    """못 맞춘 줄을 앞뒤 기준점 사이에 끼우고, 순서와 최소 간격을 지킨다."""
+    rows = len(lyrics)
+    for index in range(rows):
+        if filled[index] is not None:
+            continue
+        prev = next((k for k in reversed(range(index)) if filled[k] is not None), None)
+        nxt = next((k for k in range(index + 1, rows) if filled[k] is not None), None)
+        begin = filled[prev] if prev is not None else first
+        run = [k for k in range(prev + 1 if prev is not None else 0,
+                                nxt if nxt is not None else rows) if filled[k] is None]
+        finish = filled[nxt] if nxt is not None else begin + 0.8 * len(run)
+        weights = [max(len(keys[k]), 1) for k in run]
+        total = sum(weights)
+        span = max(finish - begin, 0.6 * len(run))
+        offset = 0
+        for k, weight in zip(run, weights):
+            filled[k] = begin + span * (offset / total)
+            offset += weight
+
+    out = []
+    last = None
+    for index, line in enumerate(lyrics):
+        start = max(filled[index], first)
+        if last is not None:
+            start = max(start, last + 0.35)     # 순식간에 스쳐 지나가지 않게
+        out.append((start, line))
+        last = start
+    return out
 
 
 def align(lyric_lines, segments, onset=None):
@@ -93,30 +191,4 @@ def align(lyric_lines, segments, onset=None):
     # 인식기가 놓친 줄은 앞뒤 기준점 사이에 끼워 넣는다. 앞줄에 이어 붙이면
     # 어긋남이 뒤로 계속 전파된다.
     first = onset if onset is not None else heard[0][0]
-    filled = [starts.get(index) for index in range(rows)]
-    for index in range(rows):
-        if filled[index] is not None:
-            continue
-        prev = next((k for k in reversed(range(index)) if filled[k] is not None), None)
-        nxt = next((k for k in range(index + 1, rows) if filled[k] is not None), None)
-        begin = filled[prev] if prev is not None else first
-        run = [k for k in range(prev + 1 if prev is not None else 0,
-                                nxt if nxt is not None else rows) if filled[k] is None]
-        finish = filled[nxt] if nxt is not None else begin + 0.8 * len(run)
-        weights = [max(len(keys[k]), 1) for k in run]
-        total = sum(weights)
-        span = max(finish - begin, 0.6 * len(run))
-        offset = 0
-        for k, weight in zip(run, weights):
-            filled[k] = begin + span * (offset / total)
-            offset += weight
-
-    out = []
-    last = None
-    for index, line in enumerate(lyrics):
-        start = max(filled[index], first)
-        if last is not None:
-            start = max(start, last + 0.35)     # 순식간에 스쳐 지나가지 않게
-        out.append((start, line))
-        last = start
-    return out
+    return _fill_and_order(lyrics, keys, [starts.get(index) for index in range(rows)], first)

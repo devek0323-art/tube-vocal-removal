@@ -79,23 +79,112 @@ def ensure_model(name, models_dir, on_progress=None, should_cancel=None):
     return target
 
 
+_MODEL_CACHE = {}
+
+
+def _load(models_dir, use_gpu):
+    """모델을 한 번만 올린다. 받아쓰기와 강제 정렬이 같은 모델을 쓴다."""
+    import torch
+    import whisper
+
+    cuda = bool(use_gpu) and torch.cuda.is_available()
+    name, device = ("medium", "cuda") if cuda else ("small", "cpu")
+    key = (name, device)
+    if key not in _MODEL_CACHE:
+        _MODEL_CACHE[key] = whisper.load_model(name, device=device,
+                                               download_root=str(models_dir))
+    return _MODEL_CACHE[key], cuda
+
+
 def whisper_segments(vocal_path, prompt, models_dir, use_gpu):
     """보컬 스템에서 타이밍을 뽑는다. 받아쓴 글자는 버리고 시각만 쓴다.
 
     MPS는 쓰지 않는다. torch MPS에서 일부 연산이 실패하거나 CPU로 떨어지는데
     맥 실기기로 확인할 방법이 없어 CPU로 간다.
     """
+    model, cuda = _load(models_dir, use_gpu)
+    # word_timestamps — 단어별 시각까지 받는다. 세그먼트는 30초 덩어리라 줄 경계를
+    # 잡기에는 너무 굵다. 단어가 있으면 그 줄이 실제로 언제 시작하는지 알 수 있다.
+    result = model.transcribe(str(vocal_path), initial_prompt=(prompt or "")[:200],
+                              condition_on_previous_text=False, fp16=cuda,
+                              word_timestamps=True)
+    segments, words = [], []
+    for segment in result["segments"]:
+        if str(segment["text"]).strip():
+            segments.append({"start": segment["start"], "end": segment["end"],
+                             "text": segment["text"]})
+        for word in segment.get("words") or []:
+            if str(word.get("word", "")).strip():
+                words.append({"start": word["start"], "end": word["end"],
+                              "word": word["word"]})
+    return segments, words
+
+
+def force_align(vocal_path, lyric_lines, rough_starts, models_dir, use_gpu):
+    """가사를 정답으로 두고 오디오에서 위치만 찾는다 (강제 정렬).
+
+    받아쓴 결과에 가사를 짝지으면 잘못 들은 곳에서 줄이 통째로 끌려간다. 여기서는
+    가사 토큰을 그대로 넣고 모델은 그것이 언제 발음됐는지만 계산하므로 그 오류가
+    구조적으로 생기지 않는다.
+
+    위스퍼는 30초 창만 본다. 창을 20초씩 겹쳐 가며 훑고, 각 줄은 신뢰도가 가장
+    높게 나온 창의 결과를 쓴다. 창의 첫 단어는 앞쪽 오디오를 혼자 떠안아 창
+    시작으로 늘어나므로, 바로 앞 줄을 미끼로 함께 넣어 그 몫을 대신 받게 한다.
+    """
     import torch
     import whisper
+    from whisper.audio import N_FRAMES, SAMPLE_RATE, log_mel_spectrogram, pad_or_trim
+    from whisper.timing import find_alignment
 
-    cuda = bool(use_gpu) and torch.cuda.is_available()
-    name = "medium" if cuda else "small"
-    model = whisper.load_model(name, device="cuda" if cuda else "cpu",
-                               download_root=str(models_dir))
-    result = model.transcribe(str(vocal_path), initial_prompt=(prompt or "")[:200],
-                              condition_on_previous_text=False, fp16=cuda)
-    return [{"start": s["start"], "end": s["end"], "text": s["text"]}
-            for s in result["segments"] if str(s["text"]).strip()]
+    lines = [line.strip() for line in lyric_lines if line.strip()]
+    if not lines or len(rough_starts) != len(lines):
+        return []
+    model, _ = _load(models_dir, use_gpu)
+    language = "ko" if re.search(r"[가-힣]", " ".join(lines)) else "en"
+    tokenizer = whisper.tokenizer.get_tokenizer(model.is_multilingual, language=language,
+                                                num_languages=model.num_languages)
+    audio = whisper.load_audio(str(vocal_path))
+    duration = len(audio) / SAMPLE_RATE
+
+    best = [None] * len(lines)
+    trust = [-1.0] * len(lines)
+    window, step = 30.0, 20.0
+    start = 0.0
+    while start < duration:
+        # 창 가장자리는 신뢰할 수 없으므로 안쪽에 들어오는 줄만 이 창에서 맞춘다.
+        members = [i for i, at in enumerate(rough_starts)
+                   if start + 0.5 <= at < start + window - 4.0]
+        if members:
+            lead = members[0] - 1 if members[0] > 0 else None
+            group = ([lead] if lead is not None else []) + members
+            tokens, owner = [], []
+            for index in group:
+                encoded = tokenizer.encode(" " + lines[index])
+                tokens.extend(encoded)
+                owner.extend([index] * len(encoded))
+            begin = int(start * SAMPLE_RATE)
+            chunk = pad_or_trim(audio[begin:begin + int(window * SAMPLE_RATE)],
+                                int(window * SAMPLE_RATE))
+            mel = log_mel_spectrogram(chunk, model.dims.n_mels).to(model.device)
+            try:
+                with torch.no_grad():
+                    timings = find_alignment(model, tokenizer, tokens, mel, N_FRAMES)
+            except Exception:
+                timings = []
+            cursor = 0
+            seen = {}
+            for word in timings:
+                for _ in word.tokens:
+                    if cursor < len(owner):
+                        index = owner[cursor]
+                        if index not in seen:
+                            seen[index] = (start + float(word.start), float(word.probability))
+                    cursor += 1
+            for index, (at, score) in seen.items():
+                if index != lead and score > trust[index]:
+                    best[index], trust[index] = at, score
+        start += step
+    return best
 
 
 def whisper_model_name(use_gpu):

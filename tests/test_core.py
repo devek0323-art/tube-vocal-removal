@@ -295,6 +295,24 @@ class CoreTests(unittest.TestCase):
         self.assertGreater(times[1] - times[0], 0.35)      # 겹쳐서 스쳐가지 않아야 한다
         self.assertGreaterEqual(times[0], 9.0)
 
+    def test_word_alignment_reads_the_line_start_from_the_actual_word(self):
+        """세그먼트는 30초 덩어리라 여러 줄을 덮으면 글자 수로 나눌 수밖에 없다.
+        단어 시각이 있으면 그 줄이 실제로 언제 시작하는지 그대로 읽는다."""
+        from app.align import align, align_words
+
+        words = [{"start": 10.0, "end": 10.8, "word": "첫줄"},
+                 {"start": 10.8, "end": 11.6, "word": "입니다"},
+                 {"start": 20.0, "end": 20.9, "word": "둘째줄"},
+                 {"start": 20.9, "end": 21.7, "word": "입니다"}]
+        lines = align_words(["첫 줄 입니다", "둘째 줄 입니다"], words, onset=9.0)
+        self.assertAlmostEqual(lines[0][0], 10.0, places=1)
+        self.assertAlmostEqual(lines[1][0], 20.0, places=1)
+
+        # 같은 내용을 한 세그먼트로 주면 둘째 줄이 실제(20초)보다 훨씬 앞선다.
+        segment = [{"start": 10.0, "end": 21.7, "text": "첫줄 입니다 둘째줄 입니다"}]
+        rough = align(["첫 줄 입니다", "둘째 줄 입니다"], segment, onset=9.0)
+        self.assertLess(rough[1][0], 18.0)
+
     def test_align_fills_missed_lines_without_pushing_later_ones(self):
         """인식기가 놓친 줄을 앞줄 뒤에 붙이면 이후가 전부 밀린다. 뒤 기준점에서 채워야 한다."""
         from app.align import align
