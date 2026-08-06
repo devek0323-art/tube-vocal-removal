@@ -153,8 +153,11 @@ def force_align(vocal_path, lyric_lines, rough_starts, models_dir, use_gpu):
     start = 0.0
     while start < duration:
         # 창 가장자리는 신뢰할 수 없으므로 안쪽에 들어오는 줄만 이 창에서 맞춘다.
+        # 첫 창은 앞쪽을 모두 받는다. 하한을 두면 0초에 시작하는 곡의 첫 줄이
+        # 어느 창에도 못 들어가 통째로 보간으로 넘어간다.
+        low = start if start > 0 else float("-inf")
         members = [i for i, at in enumerate(rough_starts)
-                   if start + 0.5 <= at < start + window - 4.0]
+                   if low <= at < start + window - 4.0]
         if members:
             lead = members[0] - 1 if members[0] > 0 else None
             group = ([lead] if lead is not None else []) + members

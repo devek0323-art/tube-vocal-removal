@@ -99,7 +99,9 @@ def settle(rough, exact, onset=None):
     if anchored == 0 and len(filled) > 1 and filled[1] is not None:
         if filled[1] - filled[0] > 12.0:
             filled[0] = rough[0][0]
-    first = onset if onset is not None else min(v for v in filled if v is not None)
+    # onset은 라이브 녹음에서 크게 틀리기도 한다. 확정된 줄보다 뒤면 믿지 않는다.
+    anchor = min(v for v in filled if v is not None)
+    first = min(onset, anchor) if onset is not None else anchor
     return _fill_and_order(lyrics, keys, filled, first)
 
 
