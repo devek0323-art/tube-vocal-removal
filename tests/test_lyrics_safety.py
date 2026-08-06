@@ -23,6 +23,14 @@ class LyricsSafetyTests(unittest.TestCase):
         hit = lyrics._lrclib_pick(only, None, "Since Youve Been Gone", 213, strict=True, hint="Since Youve Been Gone")
         self.assertEqual(hit["text"], "엉뚱한 가사")
 
+    def test_artist_and_song_packed_into_the_track_slot(self):
+        """방송 클립 제목은 곡명 자리에 '가수 ： 곡'이 통째로 들어간다.
+        `… - 임재범 ： 너를 위해`에서 `너를 위해`까지 내려가야 찾는다."""
+        raw = "I Am A Singer #25, Yim Jae-beum ： For you - 임재범 ： 너를 위해"
+        pairs = [(artist, track) for artist, track, _ in lyrics._attempts(raw)]
+        self.assertIn(("임재범", "너를 위해"), pairs)
+        self.assertIn((None, "너를 위해"), pairs)
+
     def test_manual_search_also_falls_back_to_the_korean_source(self):
         """자동 조회는 국내 사이트까지 가는데 직접 찾기가 LRCLIB만 보면 앞뒤가 안 맞는다.
         실측 한글 50곡 중 21곡이 국내 사이트에서 나왔다."""

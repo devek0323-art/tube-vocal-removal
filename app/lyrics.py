@@ -24,7 +24,7 @@ _BRACKETS = re.compile(r"[\[\(（【][^\]\)）】]*[\]\)）】]")
 _SEPARATORS = (" - ", " – ", " — ", " _ ", "_")
 # 위 구분자가 없을 때만 쓰는 보조 구분자. `Rainbow | Since You Been Gone`처럼
 # 세로줄로 가수와 곡을 나누는 제목이 있다.
-_WEAK_SEPARATORS = (" | ", " ｜ ", "|", "｜")
+_WEAK_SEPARATORS = (" | ", " ｜ ", "|", "｜", " ： ", "：", " : ")
 
 # 제목 뒤에 붙는 채널명·영문 병기·시리즈명·공연장을 자르는 지점
 # `ㅣ`(U+3163)는 세로줄이 아니라 한글 자모다. 국내 채널이 구분선으로 자주 쓴다.
@@ -355,7 +355,14 @@ def _attempts(title, artist=None):
             push(None, quoted, cleaned)
         # 3) 가수 없이 제목만
         push(None, parsed_title or cleaned, cleaned)
-        # 4) 순서가 뒤집힌 제목 (`우주를 줄게 - 볼빨간사춘기`)
+        # 4) 곡명 자리에 '가수 ： 곡'이 통째로 들어간 제목
+        #    (`… - 임재범 ： 너를 위해` → 가수 임재범, 곡 너를 위해)
+        inner_artist, inner_title = split_artist_title(parsed_title or cleaned)
+        if inner_artist and inner_title:
+            push(inner_artist, inner_title, cleaned)
+            push(None, inner_title, cleaned)
+            push(inner_title, inner_artist, cleaned)
+        # 5) 순서가 뒤집힌 제목 (`우주를 줄게 - 볼빨간사춘기`)
         if parsed_artist and parsed_title:
             push(parsed_title, parsed_artist, cleaned)
     return order
