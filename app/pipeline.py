@@ -28,15 +28,10 @@ MODE_MODELS = {
     "karaoke_fast": "UVR_MDXNET_KARA_2.onnx",
     "vocals": "mel_band_roformer_instrumental_becruily.ckpt",
     "demucs": "htdemucs.yaml",
-    # 노래방 영상 — 분리는 `best`와 같고 뒤에 영상을 한 번 더 만든다.
-    "karaoke_video": "mel_band_roformer_instrumental_becruily.ckpt",
 }
 
-# `vocals`·`karaoke_video`는 `best`와 모델을 공유하므로 전체 받기에서는 한 번만 처리한다.
+# `vocals`는 `best`와 모델을 공유하므로 전체 받기에서는 한 번만 처리한다.
 ALL_MODEL_MODES = ("karaoke", "best", "karaoke_fast", "demucs")
-
-# 영상 모드는 반주뿐 아니라 보컬 스템도 필요하다(가사 타이밍 추출용).
-VIDEO_MODES = frozenset({"karaoke_video"})
 
 # audio-separator 0.44.3이 각 선택지에 요구하는 캐시 파일이다. 모델 본체뿐 아니라
 # 설정 파일과 Demucs 가중치까지 있어야 설치 완료로 본다.
@@ -55,15 +50,8 @@ MODEL_REQUIRED_FILES = {
     ),
     "karaoke_fast": ("UVR_MDXNET_KARA_2.onnx",),
     "demucs": ("htdemucs.yaml", "955717e8-8726e21a.th"),
-    "karaoke_video": (
-        "mel_band_roformer_instrumental_becruily.ckpt",
-        "config_mel_band_roformer_instrumental_becruily.yaml",
-    ),
 }
 
-# 가사 타이밍 인식 모델. 분리 모델이 아니므로 전체 받기와 따로 관리한다.
-# CUDA가 있으면 medium, 없으면 small을 쓴다.
-WHISPER_FILES = {"medium": "medium.pt", "small": "small.pt"}
 
 # 싱크 가사(LRC)를 그대로 쓰려면 곡 길이가 이 안에서 맞아야 한다. 라이브·리믹스는
 # 인트로 길이가 달라 스튜디오 기준 타이밍이 통째로 밀린다. 자동 조회는 원래 이 검사를
@@ -644,8 +632,6 @@ class Pipeline:
             wanted = {"보컬"}
         else:
             wanted = {"반주"}
-        # 영상 모드는 보컬 스템으로 가사 타이밍을 잡으므로 지우지 않고 들고 있는다.
-        vocal_stem = None
         normalize = bool(cfg.get("volume_fix", False)) and mode != "demucs"
         key_shift = 0 if mode == "demucs" else int(cfg.get("key_shift", 0))
         if key_shift:
@@ -661,10 +647,7 @@ class Pipeline:
                 continue
             stem = self._stem_label(path.name)
             if stem not in wanted:
-                if mode in VIDEO_MODES and stem == "보컬" and vocal_stem is None:
-                    vocal_stem = path          # 가사 타이밍용. 영상까지 만든 뒤 지운다.
-                else:
-                    path.unlink(missing_ok=True)
+                path.unlink(missing_ok=True)
                 continue
             destination = song_dir / f"{sanitize_name(item.title)} ({stem}).{extension}"
             source_path = path
@@ -690,150 +673,15 @@ class Pipeline:
         found = None
         if cfg.get("download_lyrics", True) and getattr(item, "want_lyrics", True):
             found = self._save_lyrics(item, song_dir, src)
-        if mode in VIDEO_MODES:
-            # 영상은 맨 마지막에 만든다. 키 이동·볼륨 보정을 거친 최종 반주를 써야
-            # 저장된 오디오와 영상 소리가 일치한다.
-            self._make_video(item, song_dir, moved[0], vocal_stem, found, cfg)
-        if vocal_stem is not None:
-            vocal_stem.unlink(missing_ok=True)
         if item.kind == "url" and cfg.get("keep_source", False):
             shutil.copy2(src, song_dir / sanitize_name(src.name))
         self.emit({"type": "progress", "id": item.id, "stage": "완료", "pct": 100})
         return song_dir
 
-    def _make_video(self, item, song_dir: Path, audio: Path, vocal_stem, found, cfg: dict):
-        """노래방 MP4를 만든다. 실패해도 분리 결과는 남기고 로그만 남긴다."""
-        from app import karaoke
-        from app.cover import compose
 
-        # 자막과 글꼴은 임시 폴더에서 다룬다. ffmpeg 필터에 경로를 넘기지 않으려면
-        # 작업 디렉터리를 옮겨야 하는데, 결과 폴더를 작업 디렉터리로 쓸 수는 없다.
-        work = config.TEMP_DIR / f"video_{item.id}"
-        try:
-            work.mkdir(parents=True, exist_ok=True)
-            self.emit({"type": "progress", "id": item.id, "stage": "가사 맞추는 중", "pct": 100})
-            duration = self._audio_duration(audio) or 0.0
-            if duration <= 0:
-                raise RuntimeError("반주 길이를 읽지 못했습니다.")
-            lines = self._video_lines(item, vocal_stem, found, cfg)
-            artist, track = self._artist_track(item)
 
-            self._check_canceled()
-            self.emit({"type": "progress", "id": item.id, "stage": "영상 만드는 중", "pct": 100})
-            background = work / "배경.png"
-            thumbnail = self._fetch_thumbnail(item, work)
-            compose(thumbnail, artist, track, background)
-            subtitle = karaoke.write_ass(lines, work / "가사.ass", duration) if lines else None
-            destination = song_dir / f"{sanitize_name(item.title)} (노래방).mp4"
-            karaoke.render(FFMPEG, audio, background, subtitle, destination, duration,
-                           gpu=bool(cfg.get("use_gpu", False)), on_proc=self._track_proc)
-            self._log(f"노래방 영상 저장: {item.title}")
-        except CanceledError:
-            raise
-        except Exception as exc:
-            self._log(f"노래방 영상 실패: {exc}", False)
-        finally:
-            with self._proc_lock:
-                self._proc = None
-            shutil.rmtree(work, ignore_errors=True)
 
-    def _video_lines(self, item, vocal_stem, found, cfg: dict):
-        """자막에 쓸 (시작초, 가사) 목록. 싱크 가사가 있으면 그대로, 없으면 음성으로 맞춘다."""
-        from app import align, karaoke
 
-        if not found:
-            return []
-        if found.get("synced"):
-            return karaoke.parse_lrc(found["synced"])
-        if vocal_stem is None or not Path(vocal_stem).is_file():
-            return []
-        use_gpu = bool(cfg.get("use_gpu", False))
-        name = karaoke.whisper_model_name(use_gpu)
-        if name == "small":
-            self.emit({"type": "notice", "text":
-                       "그래픽 카드 가속 없이 가사 타이밍을 맞춥니다. 곡당 몇 분 걸릴 수 있습니다."})
-        # 설정에서 미리 받지 않았으면 여기서 받는다. 진행률은 곡 진행 막대에 보여준다.
-        karaoke.ensure_model(
-            name, config.MODELS_DIR,
-            on_progress=self._percent_reporter(lambda pct: self.emit({
-                "type": "progress", "id": item.id,
-                "stage": "가사 인식 모델 받는 중", "pct": pct})),
-            should_cancel=self._cancel.is_set,
-        )
-        segments, words = karaoke.whisper_segments(vocal_stem, found["text"],
-                                                   config.MODELS_DIR, use_gpu)
-        onset = align.vocal_onset(vocal_stem)
-        lines = found["text"].splitlines()
-        if words:
-            rough = align.align_words(lyric_lines=lines,
-                                      words=align.drop_hallucinations(words, onset, key="start"),
-                                      onset=onset)
-        else:
-            rough = align.align(lines, align.drop_hallucinations(segments, onset), onset=onset)
-        if not rough:
-            return []
-        # 받아쓴 결과로 대충 위치를 잡은 뒤, 가사를 정답으로 넣어 다시 맞춘다.
-        self.emit({"type": "progress", "id": item.id, "stage": "가사 위치 맞추는 중", "pct": 100})
-        exact, ends = karaoke.force_align(vocal_stem, [text for _, text in rough],
-                                          [at for at, _ in rough], config.MODELS_DIR, use_gpu)
-        if not exact:
-            return rough
-        settled = align.settle(rough, exact, onset=onset)
-        # 끝나는 시각을 함께 넘긴다. 그 줄을 다 부른 뒤에만 다음 줄로 넘어간다.
-        return [(at, text, ends[index] if index < len(ends) else None)
-                for index, (at, text) in enumerate(settled)]
-
-    def _fetch_thumbnail(self, item, song_dir: Path):
-        """유튜브 썸네일을 내려받는다. 로컬 파일이거나 실패하면 None (배경은 단색으로)."""
-        url = getattr(item, "thumbnail_url", "")
-        if not url and item.kind == "url":
-            # 주소는 목록에 넣을 때 제목과 함께 받아 두지만, 그 스레드가 끝나기 전에
-            # 분리를 시작했거나 캐시된 파일을 다시 쓰면 비어 있다. 그때는 지금 묻는다.
-            url = self._probe_thumbnail_url(item.source)
-        if not url:
-            return None
-        import urllib.request
-
-        destination = song_dir / ".썸네일.jpg"
-        try:
-            request = urllib.request.Request(url, headers={"User-Agent": "Tube-Vocal-Removal"})
-            with urllib.request.urlopen(request, timeout=20) as response:
-                destination.write_bytes(response.read())
-            return destination
-        except Exception as exc:
-            destination.unlink(missing_ok=True)
-            self._log(f"썸네일을 받지 못해 단색 배경으로 만듭니다: {exc}", False)
-            return None
-
-    @staticmethod
-    def _probe_thumbnail_url(source: str) -> str:
-        """썸네일 주소만 다시 물어본다. 영상을 받지 않으므로 몇 초면 끝난다."""
-        try:
-            result = subprocess.run(
-                [str(YTDLP), "--print", "thumbnail", "--skip-download", "--no-playlist",
-                 "--no-warnings", "--socket-timeout", "10", source],
-                capture_output=True, text=True, encoding="utf-8", errors="replace",
-                timeout=35, **hidden_process_kwargs(),
-            )
-            if result.returncode == 0:
-                return next((line.strip() for line in result.stdout.splitlines() if line.strip()), "")
-        except (OSError, subprocess.SubprocessError):
-            pass
-        return ""
-
-    @staticmethod
-    def _artist_track(item):
-        """정보 상자에 쓸 (가수, 곡).
-
-        원제목에는 채널명·방송 정보가 붙어 있어 그대로 쓰면 지저분하다. 가사 검색이
-        쓰는 것과 같은 정제 규칙을 태워 가장 짧은 후보를 곡 제목으로 삼는다.
-        """
-        from app.lyrics import clean_title, split_artist_title, title_candidates
-
-        cleaned = clean_title(item.title)
-        artist, track = split_artist_title(cleaned)
-        candidates = title_candidates(track or cleaned)
-        return (artist or ""), (candidates[-1] if candidates else (track or cleaned))
 
     def _run_separation_process(self, src: Path, mode: str, cfg: dict, separation_dir: Path, item_id=None):
         request_path = separation_dir / "worker-request.json"
@@ -1031,71 +879,11 @@ class Pipeline:
             "all_installed": len(done) == len(ALL_MODEL_MODES),
             "count": len(done),
             "total": len(ALL_MODEL_MODES),
-            "whisper": self.whisper_installed(cfg),
         }
 
-    @staticmethod
-    def whisper_installed(cfg: dict = None) -> bool:
-        """가사 인식 모델이 받아져 있는지. 실제로 쓰게 될 크기만 확인한다.
 
-        GPU 설정에 따라 medium과 small로 갈리므로 설정을 봐야 한다. 이걸 무시하면
-        설정 화면은 '설치됨'인데 변환 도중에 1.4GB를 새로 받는 일이 생긴다.
-        """
-        from app import karaoke
 
-        name = karaoke.whisper_model_name(bool((cfg or {}).get("use_gpu", False)))
-        return (config.MODELS_DIR / WHISPER_FILES[name]).is_file()
 
-    def download_whisper_model(self, cfg: dict) -> bool:
-        """가사 인식 모델을 내려받는다. 분리 모델과 같은 폴더에 둔다."""
-        if self.running or self.model_downloading:
-            return False
-        if self.whisper_installed(cfg):
-            self.emit({"type": "model_download_state", "running": False, "mode": "whisper",
-                       "ok": True, "already_installed": True})
-            return True
-        self._cancel.clear()
-        self.model_downloading = True
-        threading.Thread(target=self._whisper_download_worker, args=(dict(cfg),), daemon=True).start()
-        return True
-
-    def _whisper_download_worker(self, cfg: dict):
-        from app import karaoke
-
-        self.emit({"type": "model_download_state", "running": True, "mode": "whisper", "ok": None})
-        try:
-            config.ensure_dirs(cfg)
-            name = karaoke.whisper_model_name(bool(cfg.get("use_gpu", False)))
-            self._log(f"가사 인식 모델({name}) 다운로드를 시작합니다.")
-            karaoke.ensure_model(
-                name, config.MODELS_DIR,
-                on_progress=self._percent_reporter(lambda pct: self.emit({
-                    "type": "model_download_state", "running": True, "mode": "whisper",
-                    "ok": None, "pct": pct})),
-                should_cancel=self._cancel.is_set,
-            )
-            self.emit({"type": "model_download_state", "running": False, "mode": "whisper", "ok": True})
-            self._log("가사 인식 모델 다운로드 완료", True)
-        except Exception as exc:
-            self.emit({"type": "model_download_state", "running": False, "mode": "whisper",
-                       "ok": False, "error": str(exc)})
-            self._log(f"가사 인식 모델 다운로드 실패: {exc}", False)
-        finally:
-            self.model_downloading = False
-
-    @staticmethod
-    def _percent_reporter(send):
-        """1%가 올라갈 때만 알리는 콜백을 만든다. 1.4GB를 1MB마다 알리면 큐가 넘친다."""
-        last = [None]
-
-        def report(received: int, total: int):
-            pct = round(received / total * 100) if total else None
-            if pct is None or pct == last[0]:
-                return
-            last[0] = pct
-            send(pct)
-
-        return report
 
     @staticmethod
     def volume_filter(measured_lufs: float, output_format: str) -> str:

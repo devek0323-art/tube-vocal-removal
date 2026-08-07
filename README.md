@@ -53,9 +53,6 @@ PyTorch MPS와 ONNX Runtime CoreML을 사용합니다.
 3. 곡마다 **키(음정)를 올리거나 내릴** 수 있고, **가사도 함께 저장**됩니다
 4. "분리 시작" 클릭 → 완료되면 출력 폴더에 곡별로 저장
 
-P6(노래방 영상)은 반주와 가사에 더해 MP4까지 만듭니다. 싱크 가사가 없는 곡은
-가사 인식 모델(약 1.4GB)을 한 번 내려받습니다. 설정에서 미리 받아둘 수 있습니다.
-
 여러 곡을 한 번에 담아 순차 처리할 수 있고, 처리 중에도 곡을 추가할 수 있습니다.
 
 ## 소스에서 빌드
@@ -82,10 +79,6 @@ pyinstaller TubeVocalRemoval-mac.spec --noconfirm
 
 ### v3.01 변경
 
-- **가사 싱크를 다시 만들었습니다** — 예전에는 음성 인식이 받아쓴 결과에 가사를 짝지어서,
-  잘못 들은 곳에서 자막이 통째로 밀렸습니다(한 곡에서 10초). 이제 **가사를 정답으로 넣고
-  위치만 찾습니다.** 잘못 들을 여지가 없어 그런 어긋남이 생기지 않습니다. 실측 오차는
-  1초 안쪽입니다
 - **가사를 못 찾으면 직접 찾을 수 있습니다** — 분리 시작을 누를 때 못 찾은 곡만 물어봅니다.
   가수·곡명을 고쳐 다시 찾거나, 가사를 직접 붙여넣거나, 건너뛸 수 있습니다. 잘 찾은 곡은
   아무것도 묻지 않습니다
@@ -94,11 +87,10 @@ pyinstaller TubeVocalRemoval-mac.spec --noconfirm
   자모(ㅣ)로 구분한 제목 등입니다. 실측 100곡에서 한글 매칭이 50%에서 95%로 올랐습니다
 - **같은 제목의 다른 곡이 붙지 않습니다** — `Since You've Been Gone`처럼 여러 가수가 서로
   다른 곡으로 갖고 있는 제목에서 엉뚱한 가사가 저장되던 문제를 고쳤습니다
-- **라이브 영상에 스튜디오 타이밍이 얹히지 않습니다** — 곡 길이를 대조해 다른 버전의 싱크
-  가사는 타이밍을 쓰지 않고 음성으로 다시 맞춥니다
-- **노래방 영상(P6) 결함 정리** — 제목에 작은따옴표가 있으면 영상이 만들어지지 않던 문제,
-  macOS에서 GPU 가속을 켜면 영상이 생성되지 않던 문제, 실패한 곡의 임시 파일이 남던 문제,
-  중단 버튼이 영상 인코딩을 멈추지 못하던 문제를 고쳤습니다
+- **가사에 타임코드가 섞이지 않습니다** — 일부 제공처가 가사 본문에 `[00:19.90]`을 넣어
+  두는데 그대로 저장되고 있었습니다
+- **노래방 영상(P6) 삭제** — 자막 타이밍을 원하는 수준으로 맞추지 못해 내렸습니다.
+  P1~P5는 그대로입니다
 
 ### v3.0 변경
 
@@ -164,7 +156,6 @@ pyinstaller TubeVocalRemoval-mac.spec --noconfirm
 | P3 | 반주 + 코러스 · 빠른 처리 | 구형 PC를 위한 빠른 모델 |
 | P4 | 보컬만 추출 | 반주를 지우고 보컬만 저장 |
 | P5 | 악기별 분리 · 4트랙 | 보컬·드럼·베이스·기타 악기 각각 저장 |
-| P6 | 노래방 영상 · MP4 | 반주에 가사 자막을 얹어 영상까지 제작 |
 
 ## 이용 안내
 
@@ -180,5 +171,4 @@ pyinstaller TubeVocalRemoval-mac.spec --noconfirm
 - [Deno](https://deno.land/) (MIT) · [PyTorch](https://pytorch.org/) (BSD-3) · [pywebview](https://pywebview.flowrl.com/) (BSD-3)
 - 분리 모델: [Ultimate Vocal Remover](https://github.com/Anjok07/ultimatevocalremovergui) 및 커뮤니티 제작 모델 (첫 사용 시 공개 저장소에서 자동 다운로드)
 - [Demucs](https://github.com/facebookresearch/demucs) (MIT) — 4트랙 분리 모델
-- [Whisper](https://github.com/openai/whisper) (MIT) — 노래방 영상의 가사 타이밍 (P6에서만 사용)
-- [Pretendard](https://github.com/orioncactus/pretendard) (OFL-1.1) — UI·영상 자막 글꼴
+- [Pretendard](https://github.com/orioncactus/pretendard) (OFL-1.1) — UI 글꼴

@@ -8,7 +8,6 @@ stretch_datas, stretch_binaries, stretch_hidden = collect_all("python_stretch")
 sf_datas, sf_binaries, sf_hidden = collect_all("soundfile")
 librosa_datas, librosa_binaries, librosa_hidden = collect_all("librosa")
 # 노래방 영상(P6)의 가사 타이밍. mel 필터·토크나이저 데이터까지 담아야 한다.
-whisper_datas, whisper_binaries, whisper_hidden = collect_all("whisper")
 scipy_dynamic = (
     collect_submodules("scipy._external.array_api_compat")
     + collect_submodules("scipy._lib.array_api_compat")
@@ -19,18 +18,17 @@ a = Analysis(
     ["app/main.py"],
     pathex=["."],
     binaries=(audio_binaries + webview_binaries + stretch_binaries + sf_binaries
-              + librosa_binaries + whisper_binaries),
+              + librosa_binaries),
     datas=[
         ("app/ui/index.html", "app/ui"),
         ("app/ui/fonts", "app/ui/fonts"),
-        ("app/assets/Pretendard.ttf", "app/assets"),
         ("bin/yt-dlp.exe", "bin"),
         ("bin/ffmpeg.exe", "bin"),
         ("bin/deno.exe", "bin"),
-    ] + audio_datas + webview_datas + stretch_datas + sf_datas + librosa_datas + whisper_datas,
+    ] + audio_datas + webview_datas + stretch_datas + sf_datas + librosa_datas,
     hiddenimports=(audio_hidden + webview_hidden + scipy_dynamic
                    + stretch_hidden + sf_hidden + librosa_hidden
-                   + whisper_hidden + ["python_stretch", "soundfile", "librosa", "whisper"]),
+                   + ["python_stretch", "soundfile", "librosa"]),
     hookspath=[],
     runtime_hooks=[],
     excludes=["tkinter", "tkinterdnd2", "PyQt5", "PyQt6", "PySide2", "PySide6"],

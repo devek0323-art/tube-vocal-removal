@@ -8,7 +8,7 @@ RUNTIME_REVISION = "cu128-1"
 RUNTIME_REQUIREMENTS_SHA = "0fea51b50021"
 # requirements가 바뀌었지만 패치가 직접 담아 나르는 패키지. 여기 적힌 것은
 # RUNTIME_REVISION을 올리지 않아도 되며, 설치 스크립트에 실제로 들어 있어야 한다.
-RUNTIME_PATCHED_PACKAGES = ("whisper", "tiktoken", "regex")
+RUNTIME_PATCHED_PACKAGES = ()
 
 GITHUB_REPOSITORY = "devek0323-art/tube-vocal-removal"
 GITHUB_API_VERSION = "2022-11-28"

@@ -181,21 +181,12 @@ class CoreTests(unittest.TestCase):
         fake_run = SimpleNamespace(returncode=0)
         with tempfile.TemporaryDirectory() as tmp:
             report = Path(tmp) / "smoke.json"
-            assets = Path(tmp) / "whisper" / "assets"
-            assets.mkdir(parents=True)
-            (assets / "mel_filters.npz").write_bytes(b"mel")
-            fake_whisper = SimpleNamespace(audio=SimpleNamespace(
-                __file__=str(assets.parent / "audio.py")))
-            with mock.patch.dict(sys.modules, {"torch": fake_torch, "whisper": fake_whisper,
-                                               "audio_separator": SimpleNamespace()}), \
-                    mock.patch("app.main.subprocess.run", return_value=fake_run):
+            with mock.patch.dict(sys.modules, {"torch": fake_torch, "audio_separator": SimpleNamespace()}),                     mock.patch("app.main.subprocess.run", return_value=fake_run):
                 self.assertEqual(smoke_test(str(report)), 0)
             payload = json.loads(report.read_text(encoding="utf-8"))
         self.assertTrue(payload["ok"], payload.get("error"))
         self.assertFalse(payload["checks"]["cuda"])
-        # P6 리소스가 번들에서 빠지면 여기서 걸려야 한다.
-        self.assertTrue(payload["checks"]["whisper"])
-        self.assertTrue(payload["checks"]["font"])
+
 
     def test_pasted_link_is_submitted_without_enter(self):
         """링크를 붙여넣으면 Enter 없이 대기열에 담겨야 한다."""
@@ -275,120 +266,10 @@ class CoreTests(unittest.TestCase):
         self.assertIn(f'#define MyAppVersion "{APP_VERSION}"', text)
         self.assertIn(f'#define MyRuntimeRevision "{RUNTIME_REVISION}"', text)
 
-    def test_subtitles_appear_before_the_line_is_sung(self):
-        """부르는 순간에 바꾸면 읽고 따라 부를 시간이 없다. 미리 띄워야 한다."""
-        from app.karaoke import SUBTITLE_LEAD, write_ass
 
-        with tempfile.TemporaryDirectory() as tmp:
-            path = write_ass([(10.0, "첫 줄"), (20.0, "둘째 줄")], Path(tmp) / "a.ass", 30.0)
-            text = Path(path).read_text(encoding="utf-8")
-        self.assertIn("0:00:%05.2f" % (10.0 - SUBTITLE_LEAD), text)
-        self.assertIn("0:00:%05.2f" % (20.0 - SUBTITLE_LEAD), text)
-        # 앞부분이 음수가 되면 안 된다.
-        with tempfile.TemporaryDirectory() as tmp:
-            path = write_ass([(0.5, "첫 줄"), (9.0, "둘째 줄")], Path(tmp) / "b.ass", 20.0)
-            self.assertIn("0:00:00.00", Path(path).read_text(encoding="utf-8"))
 
-    def test_a_line_is_not_wiped_while_it_is_still_being_sung(self):
-        """다음 줄 시각이 조금이라도 이르면 아직 부르는 중인 줄이 지워진다.
-        그 줄을 다 부른 시각(끝초)을 주면 그때까지 버텨야 한다."""
-        from app.karaoke import write_ass
 
-        # 첫 줄은 20초까지 부르는데 다음 줄 시각이 18초로 잡혔다.
-        with tempfile.TemporaryDirectory() as tmp:
-            path = write_ass([(10.0, "첫 줄", 20.0), (18.0, "둘째 줄", 26.0)],
-                             Path(tmp) / "a.ass", 30.0, lead=0.6)
-            text = Path(path).read_text(encoding="utf-8")
-        starts = [row.split(",")[1] for row in text.splitlines() if row.startswith("Dialogue")]
-        self.assertEqual(starts[0], "0:00:09.40")      # 첫 줄은 조금 미리
-        self.assertEqual(starts[-1], "0:00:20.00")     # 둘째 줄은 첫 줄을 다 부른 뒤에
 
-    def test_lrc_parsing_handles_repeated_stamps(self):
-        """후렴처럼 한 줄에 태그가 여러 개 붙는 LRC가 흔하다. 전부 살려야 한다."""
-        from app.karaoke import parse_lrc
-
-        lines = parse_lrc("[00:12.30][01:05.00] 첫 줄\n[00:20.00] 둘째 줄\n[bogus] 태그만")
-        self.assertEqual(lines, [(12.3, "첫 줄"), (20.0, "둘째 줄"), (65.0, "첫 줄")])
-
-    def test_align_keeps_real_lyrics_and_spreads_merged_segments(self):
-        """인식된 글자는 버리고 타이밍만 쓴다. 한 세그먼트가 두 줄을 덮으면 나눠 넣는다."""
-        from app.align import align
-
-        segments = [{"start": 10.0, "end": 14.0, "text": "첫줄 둘째줄"},
-                    {"start": 20.0, "end": 23.0, "text": "셋째주울"}]      # 일부러 오인식
-        lines = align(["첫 줄", "둘째 줄", "셋째 줄"], segments, onset=9.0)
-        self.assertEqual([text for _, text in lines], ["첫 줄", "둘째 줄", "셋째 줄"])
-        times = [start for start, _ in lines]
-        self.assertEqual(times, sorted(times))
-        self.assertGreater(times[1] - times[0], 0.35)      # 겹쳐서 스쳐가지 않아야 한다
-        self.assertGreaterEqual(times[0], 9.0)
-
-    def test_word_alignment_reads_the_line_start_from_the_actual_word(self):
-        """세그먼트는 30초 덩어리라 여러 줄을 덮으면 글자 수로 나눌 수밖에 없다.
-        단어 시각이 있으면 그 줄이 실제로 언제 시작하는지 그대로 읽는다."""
-        from app.align import align, align_words
-
-        words = [{"start": 10.0, "end": 10.8, "word": "첫줄"},
-                 {"start": 10.8, "end": 11.6, "word": "입니다"},
-                 {"start": 20.0, "end": 20.9, "word": "둘째줄"},
-                 {"start": 20.9, "end": 21.7, "word": "입니다"}]
-        lines = align_words(["첫 줄 입니다", "둘째 줄 입니다"], words, onset=9.0)
-        self.assertAlmostEqual(lines[0][0], 10.0, places=1)
-        self.assertAlmostEqual(lines[1][0], 20.0, places=1)
-
-        # 같은 내용을 한 세그먼트로 주면 둘째 줄이 실제(20초)보다 훨씬 앞선다.
-        segment = [{"start": 10.0, "end": 21.7, "text": "첫줄 입니다 둘째줄 입니다"}]
-        rough = align(["첫 줄 입니다", "둘째 줄 입니다"], segment, onset=9.0)
-        self.assertLess(rough[1][0], 18.0)
-
-    def test_align_fills_missed_lines_without_pushing_later_ones(self):
-        """인식기가 놓친 줄을 앞줄 뒤에 붙이면 이후가 전부 밀린다. 뒤 기준점에서 채워야 한다."""
-        from app.align import align
-
-        segments = [{"start": 30.0, "end": 33.0, "text": "둘째 줄"}]
-        lines = align(["첫 줄", "둘째 줄"], segments, onset=10.0)
-        self.assertAlmostEqual(lines[1][0], 30.0, places=1)
-        self.assertLess(lines[0][0], 30.0)
-
-    def test_drop_hallucinations_removes_pre_vocal_segments(self):
-        """가사를 프롬프트로 넣으면 인식기가 0초에 그 문장을 그대로 뱉는다."""
-        from app.align import drop_hallucinations
-
-        segments = [{"start": 0.0, "end": 4.0, "text": "환각"},
-                    {"start": 25.0, "end": 28.0, "text": "진짜"}]
-        kept = drop_hallucinations(segments, onset=18.5)
-        self.assertEqual([s["text"] for s in kept], ["진짜"])
-
-    def test_both_specs_bundle_what_the_karaoke_video_needs(self):
-        """맥 스펙에 위스퍼와 폰트가 빠져 있었다. 빠지면 P6이 그 OS에서만 죽는다."""
-        root = Path(__file__).resolve().parent.parent
-        for name in ("TubeVocalRemoval.spec", "TubeVocalRemoval-mac.spec"):
-            text = (root / name).read_text(encoding="utf-8")
-            self.assertIn('collect_all("whisper")', text, name)
-            self.assertIn("Pretendard.ttf", text, name)
-
-    def test_thumbnail_is_looked_up_again_when_the_prefetch_missed_it(self):
-        """붙여넣자마자 시작하거나 캐시를 재사용하면 썸네일 주소가 비어 있다.
-        제목은 다운로드 파일명에서 채워지므로 제목만 맞고 배경만 빠진다."""
-        pipeline = Pipeline(lambda event: None)
-        item = Item("url", "https://youtu.be/abc123", "버즈 - Monologue")
-        self.assertEqual(item.thumbnail_url, "")
-        with tempfile.TemporaryDirectory() as tmp:
-            with mock.patch.object(Pipeline, "_probe_thumbnail_url",
-                                   return_value="https://i.ytimg.com/vi/abc123/hq.jpg") as probe, \
-                    mock.patch("urllib.request.urlopen", return_value=FakeDownload(b"\xff\xd8jpeg")):
-                path = pipeline._fetch_thumbnail(item, Path(tmp))
-            self.assertTrue(probe.called)
-            self.assertEqual(path.read_bytes(), b"\xff\xd8jpeg")
-
-    def test_thumbnail_is_not_probed_for_local_files(self):
-        """로컬 파일에는 썸네일이 없다. yt-dlp를 부르면 시간만 버린다."""
-        pipeline = Pipeline(lambda event: None)
-        item = Item("file", "C:/음악/노래.mp3", "노래")
-        with tempfile.TemporaryDirectory() as tmp:
-            with mock.patch.object(Pipeline, "_probe_thumbnail_url") as probe:
-                self.assertIsNone(pipeline._fetch_thumbnail(item, Path(tmp)))
-            self.assertFalse(probe.called)
 
     def test_reserved_windows_names_get_a_prefix(self):
         """제목이 CON·NUL이면 폴더를 만들 수 없어 곡 전체가 실패한다."""
@@ -397,29 +278,6 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(sanitize_name("COM1"), "_COM1")
         self.assertEqual(sanitize_name("CONCERT"), "CONCERT")      # 예약명이 아니다
 
-    def test_video_encoder_never_picks_nvenc_off_windows(self):
-        """맥에서 nvenc를 고르면 영상이 안 만들어지는데 곡은 완료로 표시된다."""
-        from app import karaoke
-
-        with mock.patch.object(karaoke, "IS_WINDOWS", True), \
-                mock.patch.object(karaoke, "IS_MACOS", False):
-            self.assertIn("h264_nvenc", karaoke._codecs(True)[0])
-        with mock.patch.object(karaoke, "IS_WINDOWS", False), \
-                mock.patch.object(karaoke, "IS_MACOS", True):
-            self.assertNotIn("h264_nvenc", karaoke._codecs(True)[0])
-            self.assertIn("h264_videotoolbox", karaoke._codecs(True)[0])
-        # 가속이 실패해도 소프트웨어 인코더로 한 번 더 시도한다.
-        self.assertIn("libx264", karaoke._codecs(True)[-1])
-        self.assertEqual(len(karaoke._codecs(False)), 1)
-
-    def test_whisper_install_check_follows_the_gpu_setting(self):
-        """CUDA가 있어도 GPU를 끄면 small을 쓴다. 여기가 어긋나면 변환 중에 1.4GB를 받는다."""
-        pipeline = Pipeline(lambda event: None)
-        with mock.patch("app.karaoke.whisper_model_name", side_effect=lambda gpu: "medium" if gpu else "small") as name:
-            pipeline.whisper_installed({"use_gpu": False})
-            self.assertEqual(name.call_args[0][0], False)
-            pipeline.whisper_installed({"use_gpu": True})
-            self.assertEqual(name.call_args[0][0], True)
 
     def test_start_is_blocked_while_models_download(self):
         """둘이 같은 취소 이벤트와 프로세스 슬롯을 공유해 서로 끊는다."""
@@ -515,76 +373,6 @@ class CoreTests(unittest.TestCase):
         self.assertEqual(report[0]["artist"], "")
         self.assertEqual(report[0]["track"], "")
 
-    def test_whisper_download_button_path_runs_to_the_end(self):
-        """받기 버튼이 타는 길을 통째로 지난다. 첫 줄에서 ensure_dirs 인자가 빠져 죽었었다."""
-        events = []
-        pipeline = Pipeline(events.append)
-        cfg = dict(config.DEFAULTS)
-        with tempfile.TemporaryDirectory() as tmp:
-            cfg["output_dir"] = tmp
-            with mock.patch("app.karaoke.ensure_model") as ensure:
-                pipeline._whisper_download_worker(cfg)
-        self.assertTrue(ensure.called)
-        states = [e for e in events if e["type"] == "model_download_state"]
-        self.assertTrue(states[-1]["ok"], states[-1].get("error"))
-        self.assertFalse(pipeline.model_downloading)
-
-    def test_whisper_model_download_verifies_the_hash(self):
-        """위스퍼가 주는 다운로드 함수는 진행바를 stderr에 그린다. 창 모드 exe에는
-        stderr가 없어서 그 자리에서 죽는다. 그래서 직접 받고 해시로 검사한다."""
-        from app import karaoke
-
-        payload = b"weights" * 1000
-        digest = hashlib.sha256(payload).hexdigest()
-        with tempfile.TemporaryDirectory() as tmp:
-            models = Path(tmp)
-            fake = SimpleNamespace(_MODELS={"small": f"https://example.invalid/{digest}/small.pt"})
-            seen = []
-            with mock.patch.dict(sys.modules, {"whisper": fake}), \
-                    mock.patch.object(karaoke.urllib.request, "urlopen",
-                                      return_value=FakeDownload(payload)):
-                path = karaoke.ensure_model("small", models,
-                                            on_progress=lambda got, total: seen.append(got))
-            self.assertEqual(path, models / "small.pt")
-            self.assertEqual(path.read_bytes(), payload)
-            self.assertTrue(seen)
-            self.assertFalse(list(models.glob("*.part")))
-
-    def test_whisper_model_download_discards_a_corrupted_file(self):
-        """반쯤 받다 끊긴 파일이 남으면 이후 실행이 그걸 모델이라 믿는다."""
-        from app import karaoke
-
-        with tempfile.TemporaryDirectory() as tmp:
-            models = Path(tmp)
-            fake = SimpleNamespace(_MODELS={"small": f"https://example.invalid/{'0' * 64}/small.pt"})
-            with mock.patch.dict(sys.modules, {"whisper": fake}), \
-                    mock.patch.object(karaoke.urllib.request, "urlopen",
-                                      return_value=FakeDownload(b"broken")):
-                with self.assertRaises(RuntimeError):
-                    karaoke.ensure_model("small", models)
-            self.assertEqual(list(models.iterdir()), [])
-
-    def test_karaoke_video_mode_shares_the_instrumental_model(self):
-        """P6은 P1으로 분리한 뒤 영상을 만든다. 모델이 갈리면 결과가 달라진다."""
-        from app.pipeline import VIDEO_MODES
-
-        self.assertEqual(MODE_MODELS["karaoke_video"], MODE_MODELS["best"])
-        self.assertIn("karaoke_video", VIDEO_MODES)
-        # 전체 받기는 같은 모델을 두 번 받지 않는다.
-        self.assertNotIn("karaoke_video", ALL_MODEL_MODES)
-
-    def test_video_plate_strips_channel_and_broadcast_noise(self):
-        """원제목을 그대로 쓰면 정보 상자에 채널명·방송 정보가 들어가 지저분하다."""
-        noisy = "[직캠] 홍경민 - Drowning [불후의 명곡2 전설을 노래하다] ｜ KBS 260801 방송"
-        artist, track = Pipeline._artist_track(Item("url", "x", noisy))
-        self.assertEqual(artist, "홍경민")
-        self.assertEqual(track, "Drowning")
-
-    def test_bundled_font_exists_for_video_rendering(self):
-        """Pillow와 libass가 함께 쓰는 글꼴. 없으면 영상 글자가 통째로 깨진다."""
-        from app.cover import FONT
-
-        self.assertTrue(FONT.is_file(), f"{FONT}가 없습니다.")
 
     def test_volume_fix_only_applies_gain(self):
         """볼륨 보정은 게인만 건다. 구간별 게인을 다시 타면 조용한 곡의 잔재가 도드라진다."""

@@ -226,10 +226,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
 
 
-# 살짝만 미리 띄운다. 크게 당기면 부르는 도중에 사라진다 — 한 칸에 한 줄만
-# 띄우는 구조라 "미리 띄우기"와 "부를 때까지 유지"를 동시에 할 수 없다.
-# 미리 읽는 것은 아래 다음 줄(Next)이 맡는다.
-SUBTITLE_LEAD = 0.6
+# 크게 미리 띄운다. 부르는 순간에 뜨면 읽을 시간이 0이라 따라 부를 수 없다.
+# 앞 줄을 다 부른 뒤에만 교체하므로(write_ass) 크게 당겨도 앞 줄이 잘리지 않는다.
+# 실제 효과는 "앞 줄이 끝나는 순간 다음 줄이 올라온다"이다.
+SUBTITLE_LEAD = 5.0
 
 
 def write_ass(lines, destination, duration, lead: float = SUBTITLE_LEAD):
